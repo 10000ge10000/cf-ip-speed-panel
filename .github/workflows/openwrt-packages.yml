@@ -96,11 +96,11 @@ jobs:
         if: ${{ github.event.inputs.build_profile == 'all' || github.event.inputs.build_profile == matrix.profile }}
         run: |
           mkdir -p release-assets
-          find bin/packages -type f \( \
-            -name "cf-ip-speed-client_*.ipk" -o \
-            -name "luci-app-cf-ip-speed-client_*.ipk" -o \
-            -name "cf-ip-speed-client_*.apk" -o \
-            -name "luci-app-cf-ip-speed-client_*.apk" \
+          find bin -type f \( \
+            -name "cf-ip-speed-client*.ipk" -o \
+            -name "luci-app-cf-ip-speed-client*.ipk" -o \
+            -name "cf-ip-speed-client*.apk" -o \
+            -name "luci-app-cf-ip-speed-client*.apk" \
           \) -print -exec cp {} release-assets/ \;
           test -n "$(find release-assets -type f \( -name '*.ipk' -o -name '*.apk' \) -print -quit)"
 
@@ -141,10 +141,10 @@ jobs:
             target="$(printf "%s" "$pkg" | sed -n 's#artifacts/cf-ip-speed-client-\([^/]*\)/.*#\1#p')"
             cp "$pkg" "release-assets/${target}-$(basename "$pkg")"
           done < <(find artifacts -type f \( \
-            -name "cf-ip-speed-client_*.ipk" -o \
-            -name "luci-app-cf-ip-speed-client_*.ipk" -o \
-            -name "cf-ip-speed-client_*.apk" -o \
-            -name "luci-app-cf-ip-speed-client_*.apk" \
+            -name "cf-ip-speed-client*.ipk" -o \
+            -name "luci-app-cf-ip-speed-client*.ipk" -o \
+            -name "cf-ip-speed-client*.apk" -o \
+            -name "luci-app-cf-ip-speed-client*.apk" \
           \) | sort)
           mapfile -t packages < <(find release-assets -type f \( -name "*.ipk" -o -name "*.apk" \) | sort)
           if [ "${#packages[@]}" -eq 0 ]; then
