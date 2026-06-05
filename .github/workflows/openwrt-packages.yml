@@ -61,7 +61,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.ref_name }}
         run: |
-          if ! gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release create "$TAG_NAME" --title "$TAG_NAME" --notes "Cloudflare IP 优选助手 OpenWrt IPK 构建产物。"
+          if ! gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG_NAME" --repo "$GITHUB_REPOSITORY" --title "$TAG_NAME" --notes "Cloudflare IP 优选助手 OpenWrt IPK 构建产物。"
           fi
-          gh release upload "$TAG_NAME" artifacts/**/*.ipk --clobber
+          gh release upload "$TAG_NAME" --repo "$GITHUB_REPOSITORY" artifacts/**/*.ipk --clobber
