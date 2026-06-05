@@ -46,7 +46,7 @@ download() {
   url="$1"
   output="$2"
   if command -v curl >/dev/null 2>&1; then
-    curl -fL --connect-timeout 20 -o "$output" "$url"
+    curl -fsSL --connect-timeout 20 -o "$output" "$url"
   else
     wget --no-check-certificate -O "$output" "$url"
   fi
