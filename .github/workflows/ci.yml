@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  worker:
+    name: Worker check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run check
+
+  openwrt-static:
+    name: OpenWrt static checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Shell syntax
+        run: |
+          sh -n openwrt-packages/cf-ip-speed-client/files/usr/bin/cf-ip-speed-client
+          sh -n openwrt-packages/cf-ip-speed-client/files/etc/init.d/cf-ip-speed-client
+
+      - name: LuCI ASCII transport check
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          files = [
+              Path("openwrt-packages/luci-app-cf-ip-speed-client/htdocs/luci-static/resources/view/services/cf_ip_speed_client.js"),
+              Path("openwrt-packages/luci-app-cf-ip-speed-client/root/usr/share/luci/menu.d/luci-app-cf-ip-speed-client.json"),
+          ]
+          for path in files:
+              data = path.read_text(encoding="utf-8")
+              bad = [(i, ch) for i, ch in enumerate(data) if ord(ch) > 127]
+              if bad:
+                  raise SystemExit(f"{path} contains non-ASCII characters; use unicode escapes for LuCI compatibility")
+          PY

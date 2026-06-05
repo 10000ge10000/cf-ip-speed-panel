@@ -1,0 +1,20 @@
+{
+  "luci-app-cf-ip-speed-client": {
+    "description": "Grant access to Cloudflare IP preferred client",
+    "read": {
+      "uci": [ "cf_ip_speed_client" ]
+    },
+    "write": {
+      "file": {
+        "/usr/bin/cf-ip-speed-client register": [ "exec" ],
+        "/usr/bin/cf-ip-speed-client run": [ "exec" ],
+        "/usr/bin/cf-ip-speed-client run-background": [ "exec" ],
+        "/usr/bin/cf-ip-speed-client cron": [ "exec" ]
+      },
+      "uci": [ "cf_ip_speed_client" ],
+      "ubus": {
+        "file": [ "exec" ]
+      }
+    }
+  }
+}

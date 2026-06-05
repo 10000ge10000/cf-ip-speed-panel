@@ -1,0 +1,5 @@
+# 每 6 小时测速并上传一次
+0 */6 * * * CARRIER=ct REGION=陕西西安 SOURCE=xian-ct WORKER_URL=https://your-worker.workers.dev UPLOAD_TOKEN=replace-with-token bash /opt/cf-ip-speed-panel/scripts/upload-linux.sh >> /var/log/cf-ip-speed-panel.log 2>&1
+
+# 每天凌晨 03:20 测速并上传一次
+20 3 * * * CARRIER=cm REGION=广东广州 SOURCE=guangzhou-cm WORKER_URL=https://your-worker.workers.dev UPLOAD_TOKEN=replace-with-token bash /opt/cf-ip-speed-panel/scripts/upload-linux.sh >> /var/log/cf-ip-speed-panel.log 2>&1

@@ -1,0 +1,1 @@
+ALTER TABLE aggregates ADD COLUMN colo TEXT NOT NULL DEFAULT '';

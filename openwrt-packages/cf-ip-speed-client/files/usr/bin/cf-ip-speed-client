@@ -1,0 +1,370 @@
+#!/bin/sh
+
+set -eu
+
+CONFIG="cf_ip_speed_client"
+SECTION="main"
+WORKER_URL="https://cf.6610000.xyz"
+WORKDIR="/tmp/cf-ip-speed-client"
+PAYLOAD="${WORKDIR}/upload.json"
+LOG_FILE="/tmp/cf-ip-speed-client.log"
+IP_FILE="/etc/cf-ip-speed-client/ip.txt"
+PROXY_STATE_FILE="/tmp/cf-ip-speed-client-proxy-services"
+LOCK_DIR="/tmp/cf-ip-speed-client.lock"
+BACKGROUND_LOG="/tmp/cf-ip-speed-client-background.log"
+BACKGROUND_PID="/tmp/cf-ip-speed-client-background.pid"
+DEFAULT_DOWNLOAD_URL="${WORKER_URL}/__speedtest?bytes=104857600"
+PROXY_SERVICES="nikki openclash passwall passwall2 passwall_server passwall2_server homeproxy shadowsocksr shadowsocks-libev momo sing-box mihomo clash v2raya xray luci-xray nekobox fullcombo fullcombo-shark"
+
+log() {
+	logger -t cf-ip-speed-client "$*"
+	echo "$*" >> "$LOG_FILE"
+}
+
+set_status() {
+	uci set "${CONFIG}.${SECTION}.last_status=$1"
+	uci set "${CONFIG}.${SECTION}.last_message=$2"
+	uci set "${CONFIG}.${SECTION}.last_upload_at=$(TZ=CST-8 date '+%Y-%m-%d %H:%M:%S CST')"
+	uci commit "$CONFIG"
+}
+
+cfg() {
+	uci -q get "${CONFIG}.${SECTION}.$1" 2>/dev/null || echo "${2:-}"
+}
+
+get_hostname() {
+	cat /proc/sys/kernel/hostname 2>/dev/null || hostname 2>/dev/null || echo openwrt
+}
+
+json_escape() {
+	sed 's/\\/\\\\/g; s/"/\\"/g' | tr -d '\r'
+}
+
+require_command() {
+	if ! command -v "$1" >/dev/null 2>&1; then
+		set_status "error" "缺少命令：$1"
+		log "ERROR: missing command: $1"
+		exit 1
+	fi
+}
+
+stop_active_proxy_services() {
+	: > "$PROXY_STATE_FILE"
+	for service in $PROXY_SERVICES; do
+		if [ -x "/etc/init.d/$service" ] && "/etc/init.d/$service" status >/dev/null 2>&1; then
+			echo "$service" >> "$PROXY_STATE_FILE"
+			log "stopping proxy service before test: $service"
+			"/etc/init.d/$service" stop >/dev/null 2>&1 || true
+		fi
+	done
+	if [ -s "$PROXY_STATE_FILE" ]; then
+		sleep 3
+	fi
+}
+
+restore_proxy_services() {
+	if [ ! -f "$PROXY_STATE_FILE" ]; then
+		return 0
+	fi
+	while IFS= read -r service; do
+		[ -n "$service" ] || continue
+		if [ -x "/etc/init.d/$service" ]; then
+			log "restoring proxy service after test: $service"
+			"/etc/init.d/$service" start >/dev/null 2>&1 || true
+		fi
+	done < "$PROXY_STATE_FILE"
+	rm -f "$PROXY_STATE_FILE"
+}
+
+cleanup_run() {
+	restore_proxy_services
+	rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+stopped_proxy_summary() {
+	if [ -s "$PROXY_STATE_FILE" ]; then
+		tr '\n' ' ' < "$PROXY_STATE_FILE" | sed 's/[[:space:]]*$//'
+	fi
+}
+
+register_device() {
+	nickname="$(cfg nickname)"
+	device_id="$(cfg device_id)"
+	device_token="$(cfg device_token)"
+	device_name="$(get_hostname)"
+
+	if [ -n "$device_id" ] && [ -n "$device_token" ]; then
+		set_status "ok" "已注册。如需更换昵称，请先清空设备凭据后重新注册。"
+		echo "already registered: $device_id"
+		return 0
+	fi
+	if [ -z "$nickname" ]; then
+		set_status "error" "请先填写昵称"
+		exit 1
+	fi
+
+	response="$(curl -fsS -X POST "${WORKER_URL}/api/public/register" \
+		-H "Content-Type: application/json" \
+		-d "{\"nickname\":\"$(printf '%s' "$nickname" | json_escape)\",\"device_name\":\"$(printf '%s' "$device_name" | json_escape)\"}")"
+
+	device_id="$(printf '%s' "$response" | jsonfilter -e '@.device_id' 2>/dev/null || true)"
+	device_token="$(printf '%s' "$response" | jsonfilter -e '@.device_token' 2>/dev/null || true)"
+	if [ -z "$device_id" ] || [ -z "$device_token" ]; then
+		set_status "error" "注册失败：$response"
+		exit 1
+	fi
+
+	uci set "${CONFIG}.${SECTION}.device_id=$device_id"
+	uci set "${CONFIG}.${SECTION}.device_token=$device_token"
+	uci commit "$CONFIG"
+	set_status "ok" "注册成功"
+	echo "registered: $device_id"
+}
+
+default_interface() {
+	ip route show default 2>/dev/null | awk '{ for (i=1; i<=NF; i++) if ($i=="dev") { print $(i+1); exit } }'
+}
+
+detect_direct() {
+	target_ip="$1"
+	default_if="$(default_interface)"
+	route_interface="$(ip route get "$target_ip" 2>/dev/null | awk '{ for (i=1; i<=NF; i++) if ($i=="dev") { print $(i+1); exit } }')"
+	if [ -z "$route_interface" ]; then
+		route_interface="$default_if"
+	fi
+
+	egress_meta="$(curl -fsS --max-time 8 https://ipinfo.io/json 2>/dev/null || true)"
+	egress_ip="$(printf '%s' "$egress_meta" | jsonfilter -e '@.ip' 2>/dev/null || true)"
+	egress_region="$(printf '%s' "$egress_meta" | jsonfilter -e '@.region' 2>/dev/null || true)"
+	egress_city="$(printf '%s' "$egress_meta" | jsonfilter -e '@.city' 2>/dev/null || true)"
+	egress_country="$(printf '%s' "$egress_meta" | jsonfilter -e '@.country' 2>/dev/null || true)"
+	egress_org="$(printf '%s' "$egress_meta" | jsonfilter -e '@.org' 2>/dev/null || true)"
+	egress_asn="$(printf '%s' "$egress_org" | sed -n 's/^AS\([0-9][0-9]*\).*/\1/p')"
+	if [ -z "$egress_ip" ]; then
+		egress_ip="$(curl -fsS --max-time 8 https://api.ipify.org 2>/dev/null || true)"
+	fi
+
+	warnings=""
+	proxy_suspected="false"
+
+	case "$route_interface" in
+		tun*|utun*|clash*|mihomo*|sing-box*|wg*|tailscale*|zerotier*|nikki*)
+			proxy_suspected="true"
+			warnings="路由出口疑似代理接口"
+			;;
+	esac
+	if [ -n "$default_if" ] && [ -n "$route_interface" ] && [ "$route_interface" != "$default_if" ]; then
+		proxy_suspected="true"
+		warnings="${warnings}${warnings:+; }测速路由出口不是默认出口"
+	fi
+	if printf '%s' "$egress_org" | grep -Eiq 'alibaba|amazon|aws|google|microsoft|azure|cloudflare|tencent|huawei|oracle|digitalocean|linode|akamai|vultr|hetzner|ovh|cloud|hosting|data center|datacenter'; then
+		proxy_suspected="true"
+		warnings="${warnings}${warnings:+; }出口 ASN 疑似云服务或代理"
+	fi
+	if [ -n "$egress_country" ] && [ "$egress_country" != "CN" ]; then
+		proxy_suspected="true"
+		warnings="${warnings}${warnings:+; }出口国家不是 CN"
+	fi
+
+	if [ -n "$warnings" ]; then
+		warnings_json="[\"$(printf '%s' "$warnings" | json_escape)\"]"
+	else
+		warnings_json="[]"
+	fi
+
+	printf '{"proxy_suspected":%s,"route_interface":"%s","wan_interface":"%s","egress_ip":"%s","egress_asn":"%s","egress_country":"%s","egress_org":"%s","egress_region":"%s","egress_city":"%s","warnings":%s}' \
+		"$proxy_suspected" \
+		"$(printf '%s' "$route_interface" | json_escape)" \
+		"$(printf '%s' "$default_if" | json_escape)" \
+		"$(printf '%s' "$egress_ip" | json_escape)" \
+		"$(printf '%s' "$egress_asn" | json_escape)" \
+		"$(printf '%s' "$egress_country" | json_escape)" \
+		"$(printf '%s' "$egress_org" | json_escape)" \
+		"$(printf '%s' "$egress_region" | json_escape)" \
+		"$(printf '%s' "$egress_city" | json_escape)" \
+		"$warnings_json"
+}
+
+csv_to_nodes() {
+	result_file="$1"
+	awk -F',' '
+	NR == 1 {
+		for (i = 1; i <= NF; i++) {
+			gsub(/^\xef\xbb\xbf/, "", $i)
+			h = tolower($i)
+			if (h ~ /ip/) ip_col = i
+			if (h ~ /port|端口/) port_col = i
+			if (h ~ /latency|平均延迟/) lat_col = i
+			if (h ~ /speed|下载速度/) speed_col = i
+			if (h ~ /loss|丢包率/) loss_col = i
+			if (h ~ /colo|地区码|数据中心/) colo_col = i
+		}
+		if (!ip_col && NF >= 7) ip_col = 1
+		if (!loss_col && NF >= 7) loss_col = 4
+		if (!lat_col && NF >= 7) lat_col = 5
+		if (!speed_col && NF >= 7) speed_col = 6
+		if (!colo_col && NF >= 7) colo_col = 7
+		next
+	}
+	ip_col && $ip_col != "" {
+		ip = $ip_col
+		port = port_col ? $port_col : 443
+		lat = lat_col ? $lat_col : 0
+		speed = speed_col ? $speed_col : 0
+		loss = loss_col ? $loss_col : 0
+		colo = colo_col ? $colo_col : ""
+		gsub(/[^0-9.]/, "", port)
+		gsub(/[^0-9.]/, "", lat)
+		gsub(/[^0-9.]/, "", speed)
+		gsub(/[^0-9.]/, "", loss)
+		gsub(/"/, "\\\"", ip)
+		gsub(/"/, "\\\"", colo)
+		printf "%s{\"ip\":\"%s\",\"port\":%s,\"latency\":%s,\"speed\":%s,\"loss\":%s,\"tls\":true,\"colo\":\"%s\"}", sep, ip, port ? port : 443, lat ? lat : 0, speed ? speed : 0, loss ? loss : 0, colo
+		sep=","
+	}' "$result_file"
+}
+
+run_once() {
+	require_command curl
+	require_command ip
+	require_command awk
+	require_command jsonfilter
+	require_command cfst
+
+	enabled="$(cfg enabled 0)"
+	if [ "$enabled" != "1" ]; then
+		log "client disabled"
+		exit 0
+	fi
+
+	device_id="$(cfg device_id)"
+	device_token="$(cfg device_token)"
+	nickname="$(cfg nickname)"
+	result_file="$(cfg result_file "${WORKDIR}/result.csv")"
+	download_url="$(cfg download_url "$DEFAULT_DOWNLOAD_URL")"
+
+	mkdir -p "$WORKDIR"
+	cd "$WORKDIR"
+	if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+		set_status "running" "已有测速任务正在运行，请稍后再试。"
+		exit 0
+	fi
+	trap 'cleanup_run' EXIT INT TERM HUP
+
+	if [ ! -f "$IP_FILE" ]; then
+		set_status "error" "缺少 cfst IP 数据文件：$IP_FILE"
+		exit 1
+	fi
+
+	stop_active_proxy_services
+	stopped_proxies="$(stopped_proxy_summary)"
+
+	cfst -f "$IP_FILE" -n 50 -t 2 -dn 5 -dt 10 -url "$download_url" -o "$result_file" >/tmp/cf-ip-speed-client-cfst.log 2>&1
+
+	if [ ! -f "$result_file" ]; then
+		set_status "error" "cfst 未生成 result.csv"
+		exit 1
+	fi
+
+	first_ip="$(awk -F',' 'NR==2 { print $1; exit }' "$result_file")"
+	direct_check="$(detect_direct "$first_ip")"
+	nodes="$(csv_to_nodes "$result_file")"
+	if [ -z "$nodes" ]; then
+		set_status "error" "result.csv 中没有可上传节点"
+		exit 1
+	fi
+
+	cat > "$PAYLOAD" <<EOF
+{
+  "nickname": "$(printf '%s' "$nickname" | json_escape)",
+  "device_id": "$(printf '%s' "$device_id" | json_escape)",
+  "device_token": "$(printf '%s' "$device_token" | json_escape)",
+  "device_name": "$(get_hostname | json_escape)",
+  "direct_check": $direct_check,
+  "nodes": [$nodes]
+}
+EOF
+
+	response="$(curl -fsS -X POST "${WORKER_URL}/api/public/upload" -H "Content-Type: application/json" --data-binary "@${PAYLOAD}")"
+	ok="$(printf '%s' "$response" | jsonfilter -e '@.success' 2>/dev/null || true)"
+	if [ "$ok" != "true" ]; then
+		set_status "error" "上传失败：$response"
+		exit 1
+	fi
+
+	new_device_id="$(printf '%s' "$response" | jsonfilter -e '@.device_id' 2>/dev/null || true)"
+	new_device_token="$(printf '%s' "$response" | jsonfilter -e '@.device_token' 2>/dev/null || true)"
+	if [ -n "$new_device_id" ] && [ -n "$new_device_token" ]; then
+		uci set "${CONFIG}.${SECTION}.device_id=$new_device_id"
+		uci set "${CONFIG}.${SECTION}.device_token=$new_device_token"
+		uci commit "$CONFIG"
+	fi
+
+	proxy_suspected="$(printf '%s' "$direct_check" | jsonfilter -e '@.proxy_suspected' 2>/dev/null || true)"
+	warnings="$(printf '%s' "$direct_check" | jsonfilter -e '@.warnings[0]' 2>/dev/null || true)"
+	if [ "$proxy_suspected" = "true" ]; then
+		set_status "ok" "上传成功；当前出口疑似代理，数据不会参与 DNS 优选。建议为 cf.6610000.xyz、ipinfo.io、api.ipify.org 和 Cloudflare 测速 IP 设置直连。${warnings:+ 原因：$warnings}"
+	elif [ -n "$stopped_proxies" ]; then
+		log "proxy services restored after test: $stopped_proxies"
+		set_status "ok" "上传成功；测速期间已临时暂停代理服务，完成后已恢复。"
+	else
+		set_status "ok" "上传成功"
+	fi
+	log "upload success"
+}
+
+run_background() {
+	enabled="$(cfg enabled 0)"
+	if [ "$enabled" != "1" ]; then
+		set_status "error" "客户端未启用，请先打开启用开关并保存。"
+		exit 1
+	fi
+	if [ -d "$LOCK_DIR" ]; then
+		set_status "running" "已有测速任务正在运行，请稍后刷新状态。"
+		echo "already running"
+		return 0
+	fi
+	set_status "running" "后台测速任务已启动。测速期间会临时暂停代理服务，完成后自动恢复。"
+	rm -f "$BACKGROUND_PID"
+	start-stop-daemon -S -b -m -p "$BACKGROUND_PID" -x /bin/sh -- -c "exec /usr/bin/cf-ip-speed-client run > '$BACKGROUND_LOG' 2>&1 < /dev/null"
+	echo "started background task"
+}
+
+install_cron() {
+	enabled="$(cfg enabled 0)"
+	schedule_mode="$(cfg schedule_mode interval)"
+	interval_hours="$(cfg interval_hours 6)"
+	daily_hour="$(cfg daily_hour 3)"
+	daily_minute="$(cfg daily_minute 0)"
+	sed -i "\|# cf-ip-speed-client|d" /etc/crontabs/root 2>/dev/null || true
+	if [ "$enabled" = "1" ]; then
+		case "$schedule_mode" in
+			daily)
+				daily_hour="$(printf '%s' "$daily_hour" | sed 's/[^0-9]//g')"
+				daily_minute="$(printf '%s' "$daily_minute" | sed 's/[^0-9]//g')"
+				[ -n "$daily_hour" ] || daily_hour=3
+				[ -n "$daily_minute" ] || daily_minute=0
+				if [ "$daily_hour" -gt 23 ] 2>/dev/null; then daily_hour=3; fi
+				if [ "$daily_minute" -gt 59 ] 2>/dev/null; then daily_minute=0; fi
+				echo "${daily_minute} ${daily_hour} * * * /usr/bin/cf-ip-speed-client run # cf-ip-speed-client" >> /etc/crontabs/root
+				;;
+			*)
+				interval_hours="$(printf '%s' "$interval_hours" | sed 's/[^0-9]//g')"
+				[ -n "$interval_hours" ] || interval_hours=6
+				if [ "$interval_hours" -lt 1 ] 2>/dev/null; then interval_hours=6; fi
+				if [ "$interval_hours" -gt 168 ] 2>/dev/null; then interval_hours=168; fi
+				echo "0 */${interval_hours} * * * /usr/bin/cf-ip-speed-client run # cf-ip-speed-client" >> /etc/crontabs/root
+				;;
+		esac
+	fi
+	/etc/init.d/cron reload >/dev/null 2>&1 || true
+	set_status "ok" "定时任务已更新"
+}
+
+case "${1:-run}" in
+	register) register_device ;;
+	run) run_once ;;
+	run-background) run_background ;;
+	cron) install_cron ;;
+	*) echo "Usage: $0 {register|run|run-background|cron}" >&2; exit 1 ;;
+esac

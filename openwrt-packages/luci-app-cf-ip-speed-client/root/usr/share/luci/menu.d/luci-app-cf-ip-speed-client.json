@@ -1,0 +1,13 @@
+{
+  "admin/services/cf-ip-speed-client": {
+    "title": "Cloudflare IP \u4f18\u9009\u52a9\u624b",
+    "action": {
+      "type": "view",
+      "path": "services/cf_ip_speed_client"
+    },
+    "depends": {
+      "acl": [ "luci-app-cf-ip-speed-client" ],
+      "uci": { "cf_ip_speed_client": true }
+    }
+  }
+}

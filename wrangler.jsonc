@@ -1,0 +1,51 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "cf-ip-speed-panel",
+	"account_id": "0837749ee35dce4611f2f5a1b282038e",
+	"main": "src/index.ts",
+	"workers_dev": true,
+	"compatibility_date": "2026-06-04",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	},
+	"vars": {
+		"DOMAIN_CT": "ct.6610000.xyz",
+		"DOMAIN_CM": "cm.6610000.xyz",
+		"DOMAIN_CU": "cu.6610000.xyz",
+		"DNS_ROOT_DOMAIN": "6610000.xyz",
+		"DNS_ZONE_ID": "90c66a91231b535d08406c9557ef32bd"
+	},
+	"triggers": {
+		"crons": [
+			"*/30 * * * *"
+		]
+	},
+	"routes": [
+		{
+			"pattern": "cf.6610000.xyz",
+			"custom_domain": true
+		}
+	],
+	"secrets": {
+		"required": [
+			"UPLOAD_TOKEN"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "cf-ip-speed-panel",
+			"database_id": "7e4d9983-1578-40c3-b3da-3d8036832adb"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "SPEED_TEST_KV",
+			"id": "8c97f740db2b4706a0739f22a71c94ad"
+		}
+	]
+}

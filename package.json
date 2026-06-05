@@ -1,0 +1,19 @@
+{
+  "name": "cf-ip-speed-panel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "d1:migrate:local": "wrangler d1 migrations apply cf-ip-speed-panel --local",
+    "d1:migrate:remote": "wrangler d1 migrations apply cf-ip-speed-panel --remote",
+    "typecheck": "tsc --noEmit",
+    "check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260604.0",
+    "typescript": "^5.8.3",
+    "wrangler": "^4.18.0"
+  }
+}

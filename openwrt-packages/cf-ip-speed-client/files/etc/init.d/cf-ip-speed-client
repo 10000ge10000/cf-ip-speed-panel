@@ -1,0 +1,20 @@
+#!/bin/sh /etc/rc.common
+
+START=95
+USE_PROCD=1
+
+CRON_TAG="# cf-ip-speed-client"
+
+start_service() {
+	/usr/bin/cf-ip-speed-client cron
+}
+
+stop_service() {
+	sed -i "\|${CRON_TAG}|d" /etc/crontabs/root 2>/dev/null || true
+	/etc/init.d/cron reload >/dev/null 2>&1 || true
+}
+
+reload_service() {
+	stop_service
+	start_service
+}

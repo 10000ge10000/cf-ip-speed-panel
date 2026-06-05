@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.dev.vars
+.env
+.env.*
+upload-payload.json
+result.csv
+npm-debug.log*
