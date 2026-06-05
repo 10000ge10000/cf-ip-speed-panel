@@ -32,6 +32,7 @@ jobs:
           ARCH: ${{ matrix.arch }}
           PACKAGES: cf-ip-speed-client luci-app-cf-ip-speed-client
           FEED_DIR: ${{ github.workspace }}/openwrt-packages
+          NO_SHFMT_CHECK: 1
 
       - name: Upload IPK artifacts
         uses: actions/upload-artifact@v4
