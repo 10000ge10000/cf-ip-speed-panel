@@ -369,7 +369,6 @@ export function renderHtml(): string {
       }
       aggregatesEl.innerHTML = items.map((item) => '<article class="card">'
         + '<div class="card-top"><span class="badge">' + escapeHtml(item.province_name) + ' · ' + (carrierLabels[item.carrier] || item.carrier) + '</span><span class="badge">' + escapeHtml(formatColo(item.colo)) + '</span></div>'
-        + '<div class="card-top"><span class="badge good">可信直连</span></div>'
         + '<p class="host" title="点击复制域名" data-copy="' + escapeAttr(item.hostname) + '" data-copy-label="域名">' + escapeHtml(item.hostname) + '</p>'
         + '<p class="ip" title="点击复制 IP" data-copy="' + escapeAttr(item.ip) + '" data-copy-label="IP">' + escapeHtml(item.ip) + '</p>'
         + '<div class="metrics">'
@@ -378,7 +377,7 @@ export function renderHtml(): string {
         + '<div class="metric"><span>归属</span><strong>' + escapeHtml(formatColo(item.colo)) + '</strong></div>'
         + '<div class="metric"><span>贡献者</span><strong>' + escapeHtml(item.nickname) + '</strong></div>'
         + '</div>'
-        + '<p class="sync-line">最后同步时间：' + escapeHtml(formatRelativeTime(item.updated_at)) + '（北京时间 ' + escapeHtml(formatBeijingTime(item.updated_at)) + '）</p>'
+        + '<p class="sync-line">最后同步时间：' + escapeHtml(formatRelativeTime(item.updated_at)) + '</p>'
         + '</article>').join('');
       aggregatesEl.querySelectorAll('[data-copy]').forEach((node) => node.addEventListener('click', () => copyText(node.dataset.copy, node.dataset.copyLabel)));
     }

@@ -250,8 +250,6 @@ export async function rebuildAggregates(db: D1Database, rootDomain: string): Pro
     }>();
 
   const bestByKey = new Map<string, PublicAggregate>();
-  const now = new Date().toISOString();
-
   for (const row of rows.results ?? []) {
     const key = `${row.server_province_code}:${row.server_carrier}`;
     if (bestByKey.has(key)) {
@@ -274,7 +272,7 @@ export async function rebuildAggregates(db: D1Database, rootDomain: string): Pro
       colo: row.colo ?? '',
       nickname: row.nickname,
       upload_id: row.upload_id,
-      updated_at: now
+      updated_at: row.created_at
     });
   }
 
