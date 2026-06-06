@@ -4,6 +4,10 @@ import { carrierLabel, isIpv6Address } from './utils';
 const DEVICE_TOKEN_BYTES = 24;
 const AGGREGATE_WINDOW_HOURS = 24;
 const RESERVED_NICKNAME = '一万AI分享';
+const RESERVED_NICKNAME_DEVICE_IDS = new Set([
+  '0bf89a67-9be2-4521-8ebb-d83c0954ed07',
+  '6adf90ff-f824-4589-b182-31f15f808100'
+]);
 const NICKNAME_DENY_PATTERNS = [
   /习近平|毛泽东|邓小平|江泽民|胡锦涛|李强|蔡英文|赖清德|川普|特朗普|拜登/i,
   /共产党|国民党|民进党|台独|港独|藏独|疆独|法轮功|六四|天安门/i,
@@ -111,6 +115,9 @@ export async function validateDevice(db: D1Database, deviceId: string, deviceTok
     .bind(deviceId)
     .first<StoredDevice>();
   if (!row || row.status !== 'active') {
+    return null;
+  }
+  if (row.nickname === RESERVED_NICKNAME && !RESERVED_NICKNAME_DEVICE_IDS.has(row.id)) {
     return null;
   }
   const tokenHash = await sha256(deviceToken);
