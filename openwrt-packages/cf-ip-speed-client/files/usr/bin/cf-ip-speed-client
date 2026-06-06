@@ -287,6 +287,48 @@ csv_to_nodes() {
 	}' "$result_file"
 }
 
+best_node_fields() {
+	result_file="$1"
+	awk -F',' '
+	function trim(value) {
+		gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+		return value
+	}
+	NR == 1 {
+		for (i = 1; i <= NF; i++) {
+			gsub(/^\xef\xbb\xbf/, "", $i)
+			h = tolower($i)
+			if (h ~ /ip/) ip_col = i
+			if (h ~ /port|端口/) port_col = i
+			if (h ~ /latency|平均延迟/) lat_col = i
+			if (h ~ /speed|下载速度/) speed_col = i
+			if (h ~ /loss|丢包率/) loss_col = i
+			if (h ~ /colo|地区码|数据中心/) colo_col = i
+		}
+		if (!ip_col && NF >= 7) ip_col = 1
+		if (!loss_col && NF >= 7) loss_col = 4
+		if (!lat_col && NF >= 7) lat_col = 5
+		if (!speed_col && NF >= 7) speed_col = 6
+		if (!colo_col && NF >= 7) colo_col = 7
+		next
+	}
+	ip_col && $ip_col != "" {
+		ip = trim($ip_col)
+		port = port_col ? trim($port_col) : 443
+		lat = lat_col ? trim($lat_col) : 0
+		speed = speed_col ? trim($speed_col) : 0
+		loss = loss_col ? trim($loss_col) : 0
+		colo = colo_col ? trim($colo_col) : ""
+		gsub(/[^0-9.]/, "", port)
+		gsub(/[^0-9.]/, "", lat)
+		gsub(/[^0-9.]/, "", speed)
+		gsub(/[^0-9.]/, "", loss)
+		gsub(/[^A-Za-z0-9_-]/, "", colo)
+		printf "%s\t%s\t%s\t%s\t%s\t%s\n", ip, port ? port : 443, lat ? lat : 0, speed ? speed : 0, loss ? loss : 0, colo
+		exit
+	}' "$result_file"
+}
+
 ip_file_for_version() {
 	case "$1" in
 		v6) echo "$IP_V6_FILE" ;;
@@ -325,6 +367,56 @@ append_summary() {
 	else
 		RESULT_SUMMARY="$1"
 	fi
+}
+
+clear_result_state() {
+	for ip_version in v4 v6; do
+		for field in ip port speed latency loss colo result_file route_interface egress_ip proxy_suspected warning updated_at record_type; do
+			uci -q delete "${CONFIG}.${SECTION}.last_result_${ip_version}_${field}" 2>/dev/null || true
+		done
+	done
+	uci commit "$CONFIG"
+}
+
+save_result_state() {
+	ip_version="$1"
+	result_file="$2"
+	direct_check="$3"
+	best_fields="$(best_node_fields "$result_file" || true)"
+	[ -n "$best_fields" ] || return 0
+
+	old_ifs="$IFS"
+	IFS="$(printf '\t')"
+	read -r best_ip best_port best_latency best_speed best_loss best_colo <<EOF
+$best_fields
+EOF
+	IFS="$old_ifs"
+
+	if [ "$ip_version" = "v6" ]; then
+		record_type="AAAA"
+	else
+		record_type="A"
+	fi
+	proxy_suspected="$(printf '%s' "$direct_check" | jsonfilter -e '@.proxy_suspected' 2>/dev/null || true)"
+	route_interface="$(printf '%s' "$direct_check" | jsonfilter -e '@.route_interface' 2>/dev/null || true)"
+	egress_ip="$(printf '%s' "$direct_check" | jsonfilter -e '@.egress_ip' 2>/dev/null || true)"
+	warning="$(printf '%s' "$direct_check" | jsonfilter -e '@.warnings[0]' 2>/dev/null || true)"
+	updated_at="$(TZ=CST-8 date '+%Y-%m-%d %H:%M:%S CST')"
+
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_ip=$best_ip"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_port=$best_port"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_speed=$best_speed"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_latency=$best_latency"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_loss=$best_loss"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_colo=$best_colo"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_result_file=$result_file"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_route_interface=$route_interface"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_egress_ip=$egress_ip"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_proxy_suspected=$proxy_suspected"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_warning=$warning"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_updated_at=$updated_at"
+	uci set "${CONFIG}.${SECTION}.last_result_${ip_version}_record_type=$record_type"
+	uci commit "$CONFIG"
 }
 
 run_cfst_for_version() {
@@ -368,6 +460,9 @@ run_cfst_for_version() {
 		return 1
 	fi
 
+	if [ "$upload_enabled" != "1" ]; then
+		save_result_state "$ip_version" "$result_file" "$direct_check"
+	fi
 	append_summary "${label} 完成，结果：$result_file"
 	proxy_suspected="$(printf '%s' "$direct_check" | jsonfilter -e '@.proxy_suspected' 2>/dev/null || true)"
 	warnings="$(printf '%s' "$direct_check" | jsonfilter -e '@.warnings[0]' 2>/dev/null || true)"
@@ -443,6 +538,13 @@ run_once() {
 	configured_result_file="$(cfg result_file "${WORKDIR}/result.csv")"
 	download_url="$(cfg download_url "$DEFAULT_DOWNLOAD_URL")"
 
+	if [ "$upload_enabled" = "1" ]; then
+		if { [ -n "$device_id" ] && [ -z "$device_token" ]; } || { [ -z "$device_id" ] && [ -n "$device_token" ]; }; then
+			set_status "error" "设备凭据不完整，请清空 device_id/device_token 后重新注册。"
+			exit 1
+		fi
+	fi
+
 	if [ "$upload_enabled" = "1" ] && [ -z "$device_id" ] && [ -z "$nickname" ]; then
 		set_status "error" "上传模式需要先填写昵称，或先完成注册。"
 		exit 1
@@ -457,6 +559,7 @@ run_once() {
 	trap 'cleanup_run' EXIT INT TERM HUP
 
 	: > "$CFST_LOG"
+	clear_result_state
 	stop_active_proxy_services
 	stopped_proxies="$(stopped_proxy_summary)"
 

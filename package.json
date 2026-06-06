@@ -9,7 +9,8 @@
     "d1:migrate:local": "wrangler d1 migrations apply cf-ip-speed-panel --local",
     "d1:migrate:remote": "wrangler d1 migrations apply cf-ip-speed-panel --remote",
     "typecheck": "tsc --noEmit",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test": "node --experimental-strip-types scripts/regression.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260604.0",

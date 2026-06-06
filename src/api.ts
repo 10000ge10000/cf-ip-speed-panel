@@ -5,14 +5,14 @@ import type { Carrier, DomainMapping, Env, HistorySummary, NodeRecord, UploadNod
 import {
   buildDataset,
   carrierLabel,
+  isBearerAuthorized,
   isCarrier,
   isIpAddress,
   isIpv6Address,
   jsonResponse,
   normalizeCarrier,
   parseLimit,
-  sortNodes,
-  timingSafeEqual
+  sortNodes
 } from './utils';
 
 const MAX_UPLOAD_NODES = 100;
@@ -144,7 +144,7 @@ async function handleMappings(env: Env): Promise<Response> {
 }
 
 async function handleUpload(request: Request, env: Env): Promise<Response> {
-  const authorized = await isAuthorized(request, env.UPLOAD_TOKEN);
+  const authorized = await isBearerAuthorized(request, env.UPLOAD_TOKEN);
   if (!authorized) {
     return jsonResponse({ success: false, error: '未授权：请使用 Authorization: Bearer <UPLOAD_TOKEN>' }, 401);
   }
@@ -185,15 +185,6 @@ async function handleUpload(request: Request, env: Env): Promise<Response> {
 
   await writeLatest(env.SPEED_TEST_KV, dataset, summary);
   return jsonResponse({ success: true, message: '上传成功', ...dataset });
-}
-
-async function isAuthorized(request: Request, token: string): Promise<boolean> {
-  const header = request.headers.get('authorization') ?? '';
-  const prefix = 'Bearer ';
-  if (!header.startsWith(prefix) || !token) {
-    return false;
-  }
-  return timingSafeEqual(header.slice(prefix.length).trim(), token);
 }
 
 function parseUploadPayload(payload: UploadPayload): { ok: true; nodes: NodeRecord[] } | { ok: false; error: string } {

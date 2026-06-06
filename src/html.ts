@@ -100,18 +100,18 @@ export function renderHtml(): string {
     .stat { padding: 14px; min-height: 84px; }
     .stat span { display: block; color: var(--muted); font-size: 13px; margin-bottom: 8px; }
     .stat strong { display: block; font-size: 21px; overflow-wrap: anywhere; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 14px; }
     .card {
       padding: 18px;
       min-width: 0;
       transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
     }
     .card:hover {
-      transform: translateY(-4px) scale(1.01);
+      transform: translateY(-3px);
       border-color: #a8d8ff;
       box-shadow: 0 18px 42px rgba(22, 119, 210, .14);
     }
-    .card.v6 {
+    .card.dual, .card.v6 {
       border-color: rgba(15, 143, 127, .32);
       box-shadow: 0 12px 34px rgba(15, 143, 127, .08);
     }
@@ -121,6 +121,13 @@ export function renderHtml(): string {
       gap: 10px;
       align-items: flex-start;
       margin-bottom: 14px;
+    }
+    .card-title { min-width: 0; }
+    .card-title h3 {
+      margin: 0 0 8px;
+      font-size: 19px;
+      line-height: 1.25;
+      overflow-wrap: anywhere;
     }
     .badge-row { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
     .badge {
@@ -132,6 +139,12 @@ export function renderHtml(): string {
       font-size: 12px;
       white-space: nowrap;
     }
+    .badge.strong {
+      border-color: rgba(22, 119, 210, .34);
+      background: #e8f3ff;
+      color: #0f4f91;
+      font-weight: 700;
+    }
     .badge.good {
       border-color: rgba(15, 143, 127, .34);
       background: #e9fbf7;
@@ -142,22 +155,80 @@ export function renderHtml(): string {
       background: #e9fbf7;
       color: #0b7669;
     }
-    .host, .ip { color: var(--accent); overflow-wrap: anywhere; }
+    .endpoint-list { display: grid; gap: 12px; }
+    .endpoint {
+      min-width: 0;
+      border: 1px solid rgba(216, 225, 236, .9);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #ffffff 0, #f8fbff 100%);
+      padding: 14px;
+    }
+    .endpoint.v6 {
+      border-color: rgba(15, 143, 127, .28);
+      background: linear-gradient(180deg, #ffffff 0, #f2fcf9 100%);
+    }
+    .endpoint-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .endpoint-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      font-weight: 800;
+    }
+    .endpoint-dot {
+      width: 9px;
+      height: 9px;
+      flex: 0 0 auto;
+      border-radius: 999px;
+      background: #1677d2;
+      box-shadow: 0 0 0 4px rgba(22, 119, 210, .1);
+    }
+    .endpoint.v6 .endpoint-dot {
+      background: #0f8f7f;
+      box-shadow: 0 0 0 4px rgba(15, 143, 127, .12);
+    }
+    .endpoint-body { display: grid; gap: 9px; }
+    .endpoint-row {
+      display: grid;
+      grid-template-columns: 48px minmax(0, 1fr);
+      gap: 10px;
+      align-items: baseline;
+    }
+    .field-label {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
     .host, .ip {
+      display: block;
+      color: var(--accent);
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    .host, .ip {
+      min-width: 0;
+      margin: 0;
+      padding: 2px 4px;
       cursor: pointer;
       border-radius: 6px;
       transition: background .15s ease, color .15s ease;
     }
     .host:hover, .ip:hover { background: #e8f7f5; color: #0b7669; }
-    .host { font-size: 20px; font-weight: 800; margin: 0 0 12px; padding: 3px 4px; }
-    .ip { font-size: 26px; font-weight: 800; margin: 0 0 16px; padding: 3px 4px; line-height: 1.18; }
-    .ip.v6 { font-size: 20px; line-height: 1.32; }
-    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-    .metric { background: var(--panel-2); border-radius: 8px; padding: 12px; min-height: 74px; }
+    .host { font-size: 16px; font-weight: 800; line-height: 1.35; }
+    .ip { font-size: 20px; font-weight: 900; line-height: 1.22; letter-spacing: 0; }
+    .ip.v6 { font-size: 16px; line-height: 1.36; }
+    .metrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+    .metric { background: rgba(255, 255, 255, .75); border: 1px solid rgba(216, 225, 236, .72); border-radius: 8px; padding: 10px; min-height: 66px; }
     .metric span { display: block; color: var(--muted); font-size: 12px; margin-bottom: 5px; }
-    .metric strong { font-size: 16px; }
+    .metric strong { display: block; min-width: 0; font-size: 15px; overflow-wrap: anywhere; }
     .sync-line {
-      margin: 14px 0 0;
+      margin: 10px 0 0;
       color: var(--muted);
       font-size: 13px;
       line-height: 1.6;
@@ -225,7 +296,6 @@ export function renderHtml(): string {
     footer { padding-top: 12px; }
     @media (max-width: 980px) {
       .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .info-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 640px) {
@@ -403,23 +473,92 @@ export function renderHtml(): string {
         aggregatesEl.innerHTML = '<div class="empty">暂无可用于自动 DNS 的可信聚合数据。</div>';
         return;
       }
-      aggregatesEl.innerHTML = items.map((item) => '<article class="card ' + (item.ip_version === 'v6' ? 'v6' : 'v4') + '">'
-        + '<div class="card-head"><div class="badge-row">'
-        + '<span class="badge">' + escapeHtml(item.province_name) + ' · ' + (carrierLabels[item.carrier] || item.carrier) + '</span>'
-        + '<span class="badge ' + (item.ip_version === 'v6' ? 'ipv6' : '') + '">' + escapeHtml(ipVersionLabel(item)) + '</span>'
-        + '<span class="badge good">可信直连</span>'
-        + '</div><span class="badge">' + escapeHtml(formatColo(item.colo)) + '</span></div>'
-        + '<p class="host" title="点击复制域名" data-copy="' + escapeAttr(item.hostname) + '" data-copy-label="域名">' + escapeHtml(item.hostname) + '</p>'
-        + '<p class="ip ' + (item.ip_version === 'v6' ? 'v6' : 'v4') + '" title="点击复制 IP" data-copy="' + escapeAttr(item.ip) + '" data-copy-label="IP">' + escapeHtml(item.ip) + '</p>'
-        + '<div class="metrics">'
-        + '<div class="metric"><span>速度</span><strong>' + item.speed + ' MB/s</strong></div>'
-        + '<div class="metric"><span>延迟</span><strong>' + item.latency + ' ms</strong></div>'
-        + '<div class="metric"><span>归属</span><strong>' + escapeHtml(formatColo(item.colo)) + '</strong></div>'
-        + '<div class="metric"><span>贡献者</span><strong>' + escapeHtml(item.nickname) + '</strong></div>'
-        + '</div>'
-        + '<p class="sync-line">最后同步时间：' + escapeHtml(formatRelativeTime(item.updated_at)) + '（北京时间 ' + escapeHtml(formatBeijingTime(item.updated_at)) + '）</p>'
-        + '</article>').join('');
+      aggregatesEl.innerHTML = groupAggregates(items).map(renderAggregateCard).join('');
       aggregatesEl.querySelectorAll('[data-copy]').forEach((node) => node.addEventListener('click', () => copyText(node.dataset.copy, node.dataset.copyLabel)));
+    }
+
+    function groupAggregates(items) {
+      const groups = new Map();
+      for (const item of items) {
+        const key = (item.province_code || 'unknown') + ':' + (item.carrier || 'other');
+        if (!groups.has(key)) {
+          groups.set(key, {
+            key,
+            provinceCode: item.province_code || '',
+            provinceName: item.province_name || '未知省份',
+            carrier: item.carrier || 'other',
+            carrierLabel: carrierLabels[item.carrier] || item.carrier_label || item.carrier || '其他',
+            items: []
+          });
+        }
+        groups.get(key).items.push(item);
+      }
+      return [...groups.values()]
+        .map((group) => ({ ...group, items: group.items.sort(compareEndpoints) }))
+        .sort((left, right) => {
+          const provinceSort = left.provinceName.localeCompare(right.provinceName, 'zh-CN');
+          if (provinceSort) return provinceSort;
+          return left.carrierLabel.localeCompare(right.carrierLabel, 'zh-CN');
+        });
+    }
+
+    function renderAggregateCard(group) {
+      const hasIpv4 = group.items.some((item) => item.ip_version !== 'v6');
+      const hasIpv6 = group.items.some((item) => item.ip_version === 'v6');
+      const cardClass = hasIpv4 && hasIpv6 ? 'dual' : hasIpv6 ? 'v6' : 'v4';
+      const versionLabel = hasIpv4 && hasIpv6 ? 'IPv4 + IPv6' : hasIpv6 ? 'IPv6' : 'IPv4';
+      const bestItem = group.items.reduce((best, item) => endpointScore(item) > endpointScore(best) ? item : best, group.items[0]);
+      return '<article class="card ' + cardClass + '">'
+        + '<div class="card-head">'
+        + '<div class="card-title">'
+        + '<h3>' + escapeHtml(group.provinceName) + ' · ' + escapeHtml(group.carrierLabel) + '</h3>'
+        + '<div class="badge-row">'
+        + '<span class="badge strong">' + versionLabel + '</span>'
+        + '<span class="badge good">可信直连</span>'
+        + '<span class="badge">' + group.items.length + ' 条记录</span>'
+        + '</div>'
+        + '</div>'
+        + '<span class="badge">' + escapeHtml(formatColo(bestItem.colo)) + '</span>'
+        + '</div>'
+        + '<div class="endpoint-list">' + group.items.map(renderEndpoint).join('') + '</div>'
+        + '</article>';
+    }
+
+    function renderEndpoint(item) {
+      const isIpv6 = item.ip_version === 'v6';
+      const typeLabel = ipVersionLabel(item);
+      return '<section class="endpoint ' + (isIpv6 ? 'v6' : 'v4') + '">'
+        + '<div class="endpoint-head">'
+        + '<div class="endpoint-title"><span class="endpoint-dot"></span><span>' + escapeHtml(typeLabel) + '</span></div>'
+        + '<span class="badge ' + (isIpv6 ? 'ipv6' : '') + '">' + escapeHtml(formatColo(item.colo)) + '</span>'
+        + '</div>'
+        + '<div class="endpoint-body">'
+        + '<div class="endpoint-row"><span class="field-label">域名</span><code class="host" title="点击复制域名" data-copy="' + escapeAttr(item.hostname) + '" data-copy-label="' + escapeAttr(typeLabel + ' 域名') + '">' + escapeHtml(item.hostname) + '</code></div>'
+        + '<div class="endpoint-row"><span class="field-label">IP</span><code class="ip ' + (isIpv6 ? 'v6' : 'v4') + '" title="点击复制 IP" data-copy="' + escapeAttr(item.ip) + '" data-copy-label="' + escapeAttr(typeLabel + ' IP') + '">' + escapeHtml(item.ip) + '</code></div>'
+        + '</div>'
+        + '<div class="metrics">'
+        + '<div class="metric"><span>速度</span><strong>' + formatNumber(item.speed) + ' MB/s</strong></div>'
+        + '<div class="metric"><span>延迟</span><strong>' + formatNumber(item.latency) + ' ms</strong></div>'
+        + '<div class="metric"><span>丢包</span><strong>' + formatLoss(item.loss) + '</strong></div>'
+        + '<div class="metric"><span>贡献者</span><strong>' + escapeHtml(item.nickname || '匿名') + '</strong></div>'
+        + '</div>'
+        + '<p class="sync-line">最后同步：' + escapeHtml(formatRelativeTime(item.updated_at)) + ' · 北京时间 ' + escapeHtml(formatBeijingTime(item.updated_at)) + '</p>'
+        + '</section>';
+    }
+
+    function compareEndpoints(left, right) {
+      const order = { v4: 0, v6: 1 };
+      const leftOrder = order[left.ip_version] ?? 0;
+      const rightOrder = order[right.ip_version] ?? 0;
+      if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+      return endpointScore(right) - endpointScore(left);
+    }
+
+    function endpointScore(item) {
+      const speed = Number(item.speed) || 0;
+      const latency = Number(item.latency) || 0;
+      const loss = Number(item.loss) || 0;
+      return speed * 1000 - latency * 2 - loss * 50;
     }
 
     function renderProvinceChips() {
@@ -434,8 +573,12 @@ export function renderHtml(): string {
 
     function updateActiveChips(container, key, value) {
       container.querySelectorAll('[data-' + key + ']').forEach((chip) => {
-        chip.classList.toggle('active', (chip.dataset[key] || '') === value);
+        chip.classList.toggle('active', getDatasetValue(chip, key) === value);
       });
+    }
+
+    function getDatasetValue(node, key) {
+      return node.getAttribute('data-' + key) || '';
     }
 
     async function copyText(text, label) {
@@ -482,6 +625,16 @@ export function renderHtml(): string {
       const colo = String(value || '').trim().toUpperCase();
       if (!colo || colo === 'N/A') return '归属未知';
       return (coloLabels[colo] || colo) + ' · ' + colo;
+    }
+
+    function formatNumber(value) {
+      const number = Number(value);
+      if (!Number.isFinite(number)) return '0';
+      return number.toFixed(2).replace(/\\.00$/, '').replace(/(\\.\\d)0$/, '$1');
+    }
+
+    function formatLoss(value) {
+      return formatNumber(value) + '%';
     }
 
     function ipVersionLabel(item) {

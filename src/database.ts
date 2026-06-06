@@ -59,6 +59,11 @@ interface AggregateRow {
   updated_at: string;
 }
 
+export interface DnsTarget {
+  hostname: string;
+  record_type: 'A' | 'AAAA';
+}
+
 export async function registerDevice(db: D1Database, input: RegisterInput): Promise<RegisterResult | { error: string; status: number }> {
   const nickname = normalizeNickname(input.nickname);
   if (!nickname) {
@@ -354,13 +359,54 @@ export async function recordDnsUpdate(db: D1Database, hostname: string, recordTy
     .run();
 }
 
-export async function recentlyUpdatedDns(db: D1Database, hostname: string, recordType: string, minutes: number): Promise<boolean> {
+export async function recentlyUpdatedDns(db: D1Database, hostname: string, recordType: string, ip: string, minutes: number): Promise<boolean> {
   const since = new Date(Date.now() - minutes * 60 * 1000).toISOString();
   const row = await db
-    .prepare('SELECT id FROM dns_updates WHERE hostname = ?1 AND record_type = ?2 AND status = ?3 AND created_at >= ?4 LIMIT 1')
-    .bind(hostname, recordType, 'success', since)
+    .prepare(
+      `SELECT success.id
+       FROM dns_updates success
+       WHERE success.hostname = ?1
+         AND success.record_type = ?2
+         AND success.ip = ?3
+         AND success.status = ?4
+         AND success.created_at >= ?5
+         AND NOT EXISTS (
+           SELECT 1
+           FROM dns_updates deleted
+           WHERE deleted.hostname = success.hostname
+             AND deleted.record_type = success.record_type
+             AND deleted.status = 'delete_success'
+             AND deleted.created_at >= success.created_at
+         )
+       LIMIT 1`
+    )
+    .bind(hostname, recordType, ip, 'success', since)
     .first();
   return Boolean(row);
+}
+
+export async function listActiveDnsTargets(db: D1Database): Promise<DnsTarget[]> {
+  const rows = await db
+    .prepare(
+      `SELECT latest_success.hostname, latest_success.record_type
+       FROM (
+         SELECT dns_updates.hostname, dns_updates.record_type, MAX(dns_updates.created_at) AS updated_at
+         FROM dns_updates
+         WHERE dns_updates.status = 'success'
+         GROUP BY dns_updates.hostname, dns_updates.record_type
+       ) latest_success
+       LEFT JOIN (
+         SELECT dns_updates.hostname, dns_updates.record_type, MAX(dns_updates.created_at) AS deleted_at
+         FROM dns_updates
+         WHERE dns_updates.status = 'delete_success'
+         GROUP BY dns_updates.hostname, dns_updates.record_type
+       ) latest_delete
+         ON latest_delete.hostname = latest_success.hostname
+        AND latest_delete.record_type = latest_success.record_type
+       WHERE latest_delete.deleted_at IS NULL OR latest_delete.deleted_at < latest_success.updated_at`
+    )
+    .all<DnsTarget>();
+  return rows.results ?? [];
 }
 
 export async function listRecentUploads(db: D1Database, limit: number): Promise<unknown[]> {

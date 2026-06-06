@@ -129,10 +129,16 @@ function isIpv4(value: string): boolean {
 }
 
 function isIpv6(value: string): boolean {
-  if (!value.includes(':') || value.length > 45) {
+  const address = value.trim();
+  if (!address.includes(':') || address.length > 45 || address.includes('[') || address.includes(']') || address.includes('%')) {
     return false;
   }
-  return /^[0-9a-fA-F:.]+$/.test(value);
+  try {
+    const parsed = new URL(`http://[${address}]/`);
+    return parsed.hostname.includes(':');
+  } catch {
+    return false;
+  }
 }
 
 export function isIpv6Address(value: string): boolean {
@@ -151,4 +157,16 @@ export async function timingSafeEqual(left: string, right: string): Promise<bool
     diff |= leftBytes[index] ^ rightBytes[index];
   }
   return diff === 0;
+}
+
+export async function isBearerAuthorized(request: Request, token: string | undefined): Promise<boolean> {
+  if (!token) {
+    return false;
+  }
+  const header = request.headers.get('authorization') ?? '';
+  const prefix = 'Bearer ';
+  if (!header.startsWith(prefix)) {
+    return false;
+  }
+  return timingSafeEqual(header.slice(prefix.length).trim(), token);
 }
