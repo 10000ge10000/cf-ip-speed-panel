@@ -3,7 +3,7 @@ import { carrierLabel, isIpv6Address } from './utils';
 
 const DEVICE_TOKEN_BYTES = 24;
 const AGGREGATE_WINDOW_HOURS = 24;
-const REUSABLE_NICKNAME = '一万AI分享';
+const RESERVED_NICKNAME = '一万AI分享';
 const NICKNAME_DENY_PATTERNS = [
   /习近平|毛泽东|邓小平|江泽民|胡锦涛|李强|蔡英文|赖清德|川普|特朗普|拜登/i,
   /共产党|国民党|民进党|台独|港独|藏独|疆独|法轮功|六四|天安门/i,
@@ -66,17 +66,21 @@ export async function registerDevice(db: D1Database, input: RegisterInput): Prom
   if (existing?.status !== undefined && existing.status !== 'active') {
     return { error: '该昵称不可用，请更换昵称', status: 403 };
   }
-  if (existing && nickname !== REUSABLE_NICKNAME) {
+  if (existing && nickname === RESERVED_NICKNAME) {
+    return { error: '该测试昵称仅允许已授权设备使用，请更换昵称', status: 409 };
+  }
+  if (existing) {
     return { error: '昵称已被占用，请更换昵称', status: 409 };
   }
 
-  const userId = existing?.id ?? crypto.randomUUID();
+  const userId = crypto.randomUUID();
   const deviceId = crypto.randomUUID();
   const deviceToken = createToken();
   const tokenHash = await sha256(deviceToken);
   const now = new Date().toISOString();
 
-  const statements = [
+  await db.batch([
+    db.prepare('INSERT INTO users (id, nickname, status, created_at, last_seen_at) VALUES (?1, ?2, ?3, ?4, ?5)').bind(userId, nickname, 'active', now, now),
     db.prepare('INSERT INTO devices (id, user_id, token_hash, device_name, status, created_at, last_seen_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)').bind(
       deviceId,
       userId,
@@ -85,17 +89,8 @@ export async function registerDevice(db: D1Database, input: RegisterInput): Prom
       'active',
       now,
       now
-    ),
-    db.prepare('UPDATE users SET last_seen_at = ?1 WHERE id = ?2').bind(now, userId)
-  ];
-
-  if (!existing) {
-    statements.unshift(
-      db.prepare('INSERT INTO users (id, nickname, status, created_at, last_seen_at) VALUES (?1, ?2, ?3, ?4, ?5)').bind(userId, nickname, 'active', now, now)
-    );
-  }
-
-  await db.batch(statements);
+    )
+  ]);
 
   return {
     user_id: userId,
@@ -437,7 +432,7 @@ export function normalizeNickname(value: string): string {
 }
 
 async function isDisallowedNickname(db: D1Database, nickname: string): Promise<boolean> {
-  if (nickname === REUSABLE_NICKNAME) {
+  if (nickname === RESERVED_NICKNAME) {
     return false;
   }
   if (NICKNAME_DENY_PATTERNS.some((pattern) => pattern.test(nickname))) {

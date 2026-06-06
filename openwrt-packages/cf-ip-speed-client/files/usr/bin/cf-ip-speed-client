@@ -8,6 +8,7 @@ WORKER_URL="https://cf.6610000.xyz"
 WORKDIR="/tmp/cf-ip-speed-client"
 PAYLOAD="${WORKDIR}/upload.json"
 LOG_FILE="/tmp/cf-ip-speed-client.log"
+CFST_LOG="/tmp/cf-ip-speed-client-cfst.log"
 IP_FILE="/etc/cf-ip-speed-client/ip.txt"
 PROXY_STATE_FILE="/tmp/cf-ip-speed-client-proxy-services"
 LOCK_DIR="/tmp/cf-ip-speed-client.lock"
@@ -19,6 +20,7 @@ PROXY_SERVICES="nikki openclash passwall passwall2 passwall_server passwall2_ser
 log() {
 	logger -t cf-ip-speed-client "$*"
 	echo "$*" >> "$LOG_FILE"
+	trim_log_file "$LOG_FILE"
 }
 
 set_status() {
@@ -30,6 +32,49 @@ set_status() {
 
 cfg() {
 	uci -q get "${CONFIG}.${SECTION}.$1" 2>/dev/null || echo "${2:-}"
+}
+
+log_max_size() {
+	size="$(cfg log_max_size 1048576 | sed 's/[^0-9]//g')"
+	[ -n "$size" ] || size=1048576
+	if [ "$size" -lt 10240 ] 2>/dev/null; then
+		size=10240
+	fi
+	echo "$size"
+}
+
+trim_log_file() {
+	file="$1"
+	[ -f "$file" ] || return 0
+	limit="$(log_max_size)"
+	current_size="$(wc -c < "$file" 2>/dev/null || echo 0)"
+	if [ "$current_size" -le "$limit" ] 2>/dev/null; then
+		return 0
+	fi
+	tmp="${file}.tmp"
+	tail -c "$limit" "$file" > "$tmp" 2>/dev/null && mv "$tmp" "$file"
+}
+
+clear_logs() {
+	: > "$LOG_FILE"
+	: > "$BACKGROUND_LOG"
+	: > "$CFST_LOG"
+	set_status "ok" "日志已清空"
+	echo "logs cleared"
+}
+
+show_logs() {
+	for file in "$LOG_FILE" "$BACKGROUND_LOG" "$CFST_LOG"; do
+		trim_log_file "$file"
+	done
+	echo "===== cf-ip-speed-client.log ====="
+	if [ -f "$LOG_FILE" ]; then cat "$LOG_FILE"; else echo "(empty)"; fi
+	echo
+	echo "===== cf-ip-speed-client-background.log ====="
+	if [ -f "$BACKGROUND_LOG" ]; then cat "$BACKGROUND_LOG"; else echo "(empty)"; fi
+	echo
+	echo "===== cf-ip-speed-client-cfst.log ====="
+	if [ -f "$CFST_LOG" ]; then cat "$CFST_LOG"; else echo "(empty)"; fi
 }
 
 get_hostname() {
@@ -259,7 +304,8 @@ run_once() {
 	stop_active_proxy_services
 	stopped_proxies="$(stopped_proxy_summary)"
 
-	cfst -f "$IP_FILE" -n 50 -t 2 -dn 5 -dt 10 -url "$download_url" -o "$result_file" >/tmp/cf-ip-speed-client-cfst.log 2>&1
+	cfst -f "$IP_FILE" -n 50 -t 2 -dn 5 -dt 10 -url "$download_url" -o "$result_file" >"$CFST_LOG" 2>&1
+	trim_log_file "$CFST_LOG"
 
 	if [ ! -f "$result_file" ]; then
 		set_status "error" "cfst 未生成 result.csv"
@@ -336,6 +382,7 @@ install_cron() {
 	interval_hours="$(cfg interval_hours 6)"
 	daily_hour="$(cfg daily_hour 3)"
 	daily_minute="$(cfg daily_minute 0)"
+	log_clear_interval="$(cfg log_clear_interval weekly)"
 	sed -i "\|# cf-ip-speed-client|d" /etc/crontabs/root 2>/dev/null || true
 	if [ "$enabled" = "1" ]; then
 		case "$schedule_mode" in
@@ -357,6 +404,17 @@ install_cron() {
 				;;
 		esac
 	fi
+	case "$log_clear_interval" in
+		daily)
+			echo "15 4 * * * /usr/bin/cf-ip-speed-client clear-log # cf-ip-speed-client-log" >> /etc/crontabs/root
+			;;
+		weekly)
+			echo "20 4 * * 0 /usr/bin/cf-ip-speed-client clear-log # cf-ip-speed-client-log" >> /etc/crontabs/root
+			;;
+		monthly)
+			echo "25 4 1 * * /usr/bin/cf-ip-speed-client clear-log # cf-ip-speed-client-log" >> /etc/crontabs/root
+			;;
+	esac
 	/etc/init.d/cron reload >/dev/null 2>&1 || true
 	set_status "ok" "定时任务已更新"
 }
@@ -366,5 +424,7 @@ case "${1:-run}" in
 	run) run_once ;;
 	run-background) run_background ;;
 	cron) install_cron ;;
-	*) echo "Usage: $0 {register|run|run-background|cron}" >&2; exit 1 ;;
+	show-log) show_logs ;;
+	clear-log) clear_logs ;;
+	*) echo "Usage: $0 {register|run|run-background|cron|show-log|clear-log}" >&2; exit 1 ;;
 esac

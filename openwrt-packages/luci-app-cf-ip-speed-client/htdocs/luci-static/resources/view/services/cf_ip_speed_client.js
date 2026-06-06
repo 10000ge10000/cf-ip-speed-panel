@@ -28,6 +28,12 @@ function showResult(title, body, reload) {
   ]);
 }
 
+function saveForm(map) {
+  return map.save().then(function() {
+    return fs.exec('/usr/bin/cf-ip-speed-client', ['cron']).catch(function() {});
+  });
+}
+
 function permissionHint(error) {
   var message = error && error.message ? error.message : String(error || '');
   if (/permission|access|denied|not permitted|unauthorized|forbidden/i.test(message))
@@ -112,6 +118,21 @@ return view.extend({
     };
     o.depends('schedule_mode', 'daily');
 
+    o = s.option(form.ListValue, 'log_clear_interval', _('日志定时清理'));
+    o.value('never', _('不自动清理'));
+    o.value('daily', _('每天清理'));
+    o.value('weekly', _('每周清理'));
+    o.value('monthly', _('每月清理'));
+    o.default = 'weekly';
+    o.rmempty = false;
+
+    o = s.option(form.ListValue, 'log_max_size', _('日志大小上限'));
+    o.value('102400', '100 KB');
+    o.value('1048576', '1 MB');
+    o.value('5242880', '5 MB');
+    o.default = '1048576';
+    o.rmempty = false;
+
     o = s.option(form.DummyValue, 'device_id', _('\u8bbe\u5907 ID'));
     o.cfgvalue = function(section_id) {
       return this.map.data.get('cf_ip_speed_client', section_id, 'device_id') || _('\u672a\u6ce8\u518c');
@@ -135,7 +156,9 @@ return view.extend({
     registerButton.inputstyle = 'apply';
     registerButton.onclick = function() {
       showResult(_('\u6ce8\u518c\u6635\u79f0'), _('\u6b63\u5728\u6ce8\u518c\uff0c\u8bf7\u7a0d\u5019...'), false);
-      return fs.exec('/usr/bin/cf-ip-speed-client', ['register']).then(function(result) {
+      return saveForm(m).then(function() {
+        return fs.exec('/usr/bin/cf-ip-speed-client', ['register']);
+      }).then(function(result) {
         showResult(_('\u6ce8\u518c\u6210\u529f'), commandMessage(_('\u6ce8\u518c\u5b8c\u6210\uff0c\u8bf7\u67e5\u770b\u8bbe\u5907 ID\u3002'), result), true);
       }).catch(function(error) {
         showResult(_('\u6ce8\u518c\u5931\u8d25'), _('\u6ce8\u518c\u5931\u8d25\uff1a') + permissionHint(error), true);
@@ -146,10 +169,34 @@ return view.extend({
     runButton.inputstyle = 'action';
     runButton.onclick = function() {
       showResult(_('\u6d4b\u901f\u4e0a\u4f20'), _('\u6b63\u5728\u542f\u52a8\u540e\u53f0\u6d4b\u901f\u4efb\u52a1\uff0c\u8bf7\u7a0d\u5019...'), false);
-      return fs.exec('/usr/bin/cf-ip-speed-client', ['run-background']).then(function(result) {
+      return saveForm(m).then(function() {
+        return fs.exec('/usr/bin/cf-ip-speed-client', ['run-background']);
+      }).then(function(result) {
         showResult(_('\u4efb\u52a1\u5df2\u542f\u52a8'), commandMessage(_('\u540e\u53f0\u6d4b\u901f\u5df2\u542f\u52a8\u3002\u8bf7\u7a0d\u540e\u5237\u65b0\u9875\u9762\u67e5\u770b\u6700\u8fd1\u72b6\u6001\uff0c\u4efb\u52a1\u5b8c\u6210\u540e\u4f1a\u81ea\u52a8\u6062\u590d\u4ee3\u7406\u670d\u52a1\u3002'), result), true);
       }).catch(function(error) {
         showResult(_('\u6267\u884c\u5931\u8d25'), _('\u6267\u884c\u5931\u8d25\uff1a') + permissionHint(error), true);
+      });
+    };
+
+    var logButton = s.option(form.Button, '_show_log', _('查看日志'));
+    logButton.inputstyle = 'action';
+    logButton.onclick = function() {
+      showResult(_('运行日志'), _('正在读取日志...'), false);
+      return fs.exec('/usr/bin/cf-ip-speed-client', ['show-log']).then(function(result) {
+        showResult(_('运行日志'), commandMessage('', result), false);
+      }).catch(function(error) {
+        showResult(_('读取失败'), _('读取日志失败：') + permissionHint(error), false);
+      });
+    };
+
+    var clearLogButton = s.option(form.Button, '_clear_log', _('清空日志'));
+    clearLogButton.inputstyle = 'remove';
+    clearLogButton.onclick = function() {
+      showResult(_('清空日志'), _('正在清空日志...'), false);
+      return fs.exec('/usr/bin/cf-ip-speed-client', ['clear-log']).then(function(result) {
+        showResult(_('清空完成'), commandMessage(_('日志已清空。'), result), true);
+      }).catch(function(error) {
+        showResult(_('清空失败'), _('清空日志失败：') + permissionHint(error), false);
       });
     };
 

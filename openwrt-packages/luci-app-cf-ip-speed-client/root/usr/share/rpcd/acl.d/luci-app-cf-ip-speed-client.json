@@ -9,7 +9,9 @@
         "/usr/bin/cf-ip-speed-client register": [ "exec" ],
         "/usr/bin/cf-ip-speed-client run": [ "exec" ],
         "/usr/bin/cf-ip-speed-client run-background": [ "exec" ],
-        "/usr/bin/cf-ip-speed-client cron": [ "exec" ]
+        "/usr/bin/cf-ip-speed-client cron": [ "exec" ],
+        "/usr/bin/cf-ip-speed-client show-log": [ "exec" ],
+        "/usr/bin/cf-ip-speed-client clear-log": [ "exec" ]
       },
       "uci": [ "cf_ip_speed_client" ],
       "ubus": {
