@@ -16,7 +16,7 @@ LOCK_DIR="/tmp/cf-ip-speed-client.lock"
 BACKGROUND_LOG="/tmp/cf-ip-speed-client-background.log"
 BACKGROUND_PID="/tmp/cf-ip-speed-client-background.pid"
 DEFAULT_DOWNLOAD_URL="${WORKER_URL}/__speedtest?bytes=104857600"
-CFST_STABLE_ARGS="-n 60 -t 4 -dn 8 -dt 10 -tlr 0 -p 8"
+CFST_STABLE_ARGS="-n 60 -t 4 -dn 8 -dt 15 -tlr 0 -p 8"
 PROXY_SERVICES="nikki openclash passwall passwall2 passwall_server passwall2_server homeproxy shadowsocksr shadowsocks-libev momo sing-box mihomo clash v2raya xray luci-xray nekobox fullcombo fullcombo-shark"
 
 log() {
