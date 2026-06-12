@@ -177,12 +177,24 @@ default_interface() {
 	fi
 }
 
+ipv6_source_address() {
+	interface="$1"
+	[ -n "$interface" ] || return 0
+	ip -6 addr show dev "$interface" scope global 2>/dev/null |
+		awk '/inet6 / { split($2, address, "/"); print address[1]; exit }'
+}
+
 detect_direct() {
 	target_ip="$1"
 	ip_version="${2:-v4}"
 	default_if="$(default_interface "$ip_version")"
 	if [ "$ip_version" = "v6" ]; then
-		route_interface="$(ip -6 route get "$target_ip" 2>/dev/null | awk '{ for (i=1; i<=NF; i++) if ($i=="dev") { print $(i+1); exit } }')"
+		ipv6_source="$(ipv6_source_address "$default_if")"
+		if [ -n "$ipv6_source" ]; then
+			route_interface="$(ip -6 route get "$target_ip" from "$ipv6_source" 2>/dev/null | awk '{ for (i=1; i<=NF; i++) if ($i=="dev") { print $(i+1); exit } }')"
+		else
+			route_interface="$(ip -6 route get "$target_ip" 2>/dev/null | awk '{ for (i=1; i<=NF; i++) if ($i=="dev") { print $(i+1); exit } }')"
+		fi
 		curl_family="-6"
 	else
 		route_interface="$(ip route get "$target_ip" 2>/dev/null | awk '{ for (i=1; i<=NF; i++) if ($i=="dev") { print $(i+1); exit } }')"
@@ -192,7 +204,11 @@ detect_direct() {
 		route_interface="$default_if"
 	fi
 
-	egress_meta="$(curl "$curl_family" -fsS --max-time 8 https://ipinfo.io/json 2>/dev/null || true)"
+	if [ "$ip_version" = "v6" ] && [ -n "${ipv6_source:-}" ]; then
+		egress_meta="$(curl "$curl_family" --interface "$ipv6_source" -fsS --max-time 8 https://ipinfo.io/json 2>/dev/null || true)"
+	else
+		egress_meta="$(curl "$curl_family" -fsS --max-time 8 https://ipinfo.io/json 2>/dev/null || true)"
+	fi
 	egress_ip="$(printf '%s' "$egress_meta" | jsonfilter -e '@.ip' 2>/dev/null || true)"
 	egress_region="$(printf '%s' "$egress_meta" | jsonfilter -e '@.region' 2>/dev/null || true)"
 	egress_city="$(printf '%s' "$egress_meta" | jsonfilter -e '@.city' 2>/dev/null || true)"
@@ -201,7 +217,11 @@ detect_direct() {
 	egress_asn="$(printf '%s' "$egress_org" | sed -n 's/^AS\([0-9][0-9]*\).*/\1/p')"
 	if [ -z "$egress_ip" ]; then
 		if [ "$ip_version" = "v6" ]; then
-			egress_ip="$(curl -6 -fsS --max-time 8 https://api6.ipify.org 2>/dev/null || true)"
+			if [ -n "${ipv6_source:-}" ]; then
+				egress_ip="$(curl -6 --interface "$ipv6_source" -fsS --max-time 8 https://api6.ipify.org 2>/dev/null || true)"
+			else
+				egress_ip="$(curl -6 -fsS --max-time 8 https://api6.ipify.org 2>/dev/null || true)"
+			fi
 		else
 			egress_ip="$(curl -4 -fsS --max-time 8 https://api.ipify.org 2>/dev/null || true)"
 		fi
@@ -350,7 +370,13 @@ result_file_for_version() {
 }
 
 has_ipv6_route() {
-	ip -6 route get 2606:4700::6810:85e5 >/dev/null 2>&1
+	default_if="$(default_interface v6)"
+	ipv6_source="$(ipv6_source_address "$default_if")"
+	if [ -n "$ipv6_source" ]; then
+		ip -6 route get 2606:4700::6810:85e5 from "$ipv6_source" >/dev/null 2>&1
+	else
+		ip -6 route get 2606:4700::6810:85e5 >/dev/null 2>&1
+	fi
 }
 
 version_label() {
