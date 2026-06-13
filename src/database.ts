@@ -3,6 +3,7 @@ import { carrierLabel } from './utils';
 
 const DEVICE_TOKEN_BYTES = 24;
 const AGGREGATE_WINDOW_HOURS = 24;
+const IPV6_GEO_CALIBRATION_HOURS = 6;
 const RESERVED_NICKNAME = '一万AI分享';
 const RESERVED_NICKNAME_DEVICE_IDS = new Set([
   '0bf89a67-9be2-4521-8ebb-d83c0954ed07',
@@ -131,6 +132,54 @@ export async function validateDevice(db: D1Database, deviceId: string, deviceTok
   return tokenHash === row.token_hash ? row : null;
 }
 
+export async function calibrateIpv6Geo(db: D1Database, deviceId: string, serverGeo: ServerGeo): Promise<ServerGeo> {
+  if (serverGeo.country !== 'CN' || serverGeo.carrier === 'other') {
+    return serverGeo;
+  }
+
+  const since = new Date(Date.now() - IPV6_GEO_CALIBRATION_HOURS * 60 * 60 * 1000).toISOString();
+  const recentIpv4 = await db
+    .prepare(
+      `SELECT server_province_code, server_province_name, server_carrier, cf_region, cf_city, cf_asn
+       FROM uploads
+       WHERE device_id = ?1
+         AND ip_version = 'v4'
+         AND proxy_suspected = 0
+         AND server_province_code != 'unknown'
+         AND server_carrier IN ('ct', 'cm', 'cu')
+         AND created_at >= ?2
+       ORDER BY created_at DESC
+       LIMIT 1`
+    )
+    .bind(deviceId, since)
+    .first<{
+      server_province_code: string;
+      server_province_name: string;
+      server_carrier: Carrier;
+      cf_region?: string;
+      cf_city?: string;
+      cf_asn?: number;
+    }>();
+
+  if (!recentIpv4) {
+    return serverGeo;
+  }
+  const sameNetwork = recentIpv4.server_carrier === serverGeo.carrier
+    || (recentIpv4.cf_asn !== undefined && recentIpv4.cf_asn === serverGeo.asn);
+  if (!sameNetwork) {
+    return serverGeo;
+  }
+
+  return {
+    ...serverGeo,
+    region: recentIpv4.cf_region || serverGeo.region,
+    city: recentIpv4.cf_city || serverGeo.city,
+    province_code: recentIpv4.server_province_code,
+    province_name: recentIpv4.server_province_name,
+    carrier: recentIpv4.server_carrier
+  };
+}
+
 export async function recordPublicUpload(db: D1Database, input: UploadInput): Promise<string> {
   const uploadId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -210,13 +259,51 @@ export async function rebuildAggregates(db: D1Database, rootDomain: string): Pro
   const since = new Date(Date.now() - AGGREGATE_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
   const rows = await db
     .prepare(
-      `SELECT
+      `WITH latest_uploads AS (
+         SELECT device_id, ip_version, MAX(created_at) AS created_at
+         FROM uploads
+         GROUP BY device_id, ip_version
+       ),
+       recent_v4 AS (
+         SELECT
+           device_id,
+           server_province_code,
+           server_province_name,
+           server_carrier,
+           cf_asn,
+           ROW_NUMBER() OVER (PARTITION BY device_id ORDER BY created_at DESC) AS row_number
+         FROM uploads
+         WHERE ip_version = 'v4'
+           AND proxy_suspected = 0
+           AND server_province_code != 'unknown'
+           AND server_carrier IN ('ct', 'cm', 'cu')
+           AND created_at >= ?1
+       )
+       SELECT
         uploads.id AS upload_id,
         uploads.nickname,
         uploads.ip_version,
-        uploads.server_province_code,
-        uploads.server_province_name,
-        uploads.server_carrier,
+        CASE
+          WHEN uploads.ip_version = 'v6'
+           AND recent_v4.row_number = 1
+           AND (recent_v4.server_carrier = uploads.server_carrier OR recent_v4.cf_asn = uploads.cf_asn)
+          THEN recent_v4.server_province_code
+          ELSE uploads.server_province_code
+        END AS server_province_code,
+        CASE
+          WHEN uploads.ip_version = 'v6'
+           AND recent_v4.row_number = 1
+           AND (recent_v4.server_carrier = uploads.server_carrier OR recent_v4.cf_asn = uploads.cf_asn)
+          THEN recent_v4.server_province_name
+          ELSE uploads.server_province_name
+        END AS server_province_name,
+        CASE
+          WHEN uploads.ip_version = 'v6'
+           AND recent_v4.row_number = 1
+           AND (recent_v4.server_carrier = uploads.server_carrier OR recent_v4.cf_asn = uploads.cf_asn)
+          THEN recent_v4.server_carrier
+          ELSE uploads.server_carrier
+        END AS server_carrier,
         node_results.ip,
         node_results.port,
         node_results.speed,
@@ -228,14 +315,13 @@ export async function rebuildAggregates(db: D1Database, rootDomain: string): Pro
        JOIN uploads ON uploads.id = node_results.upload_id
        JOIN devices ON devices.id = uploads.device_id
        JOIN users ON users.id = devices.user_id
-       JOIN (
-         SELECT device_id, ip_version, MAX(created_at) AS created_at
-         FROM uploads
-         GROUP BY device_id, ip_version
-       ) latest_uploads
+       JOIN latest_uploads
          ON latest_uploads.device_id = uploads.device_id
         AND latest_uploads.ip_version = uploads.ip_version
         AND latest_uploads.created_at = uploads.created_at
+       LEFT JOIN recent_v4
+         ON recent_v4.device_id = uploads.device_id
+        AND recent_v4.row_number = 1
        WHERE node_results.trusted = 1
          AND devices.status = 'active'
          AND users.status = 'active'

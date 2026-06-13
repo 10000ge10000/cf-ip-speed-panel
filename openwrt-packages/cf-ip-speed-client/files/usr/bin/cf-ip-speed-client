@@ -98,7 +98,7 @@ require_command() {
 stop_active_proxy_services() {
 	: > "$PROXY_STATE_FILE"
 	for service in $PROXY_SERVICES; do
-		if [ -x "/etc/init.d/$service" ] && "/etc/init.d/$service" status >/dev/null 2>&1; then
+		if [ -x "/etc/init.d/$service" ] && proxy_service_is_active "$service"; then
 			echo "$service" >> "$PROXY_STATE_FILE"
 			log "stopping proxy service before test: $service"
 			"/etc/init.d/$service" stop >/dev/null 2>&1 || true
@@ -107,6 +107,39 @@ stop_active_proxy_services() {
 	if [ -s "$PROXY_STATE_FILE" ]; then
 		sleep 3
 	fi
+}
+
+proxy_service_is_active() {
+	service="$1"
+	status_output="$("/etc/init.d/$service" status 2>&1 || true)"
+	case "$status_output" in
+		running|active)
+			return 0
+			;;
+	esac
+
+	case "$service" in
+		nikki) process_pattern="/etc/nikki/run" ;;
+		openclash) process_pattern="/etc/openclash" ;;
+		passwall) process_pattern="/tmp/etc/passwall/" ;;
+		passwall2) process_pattern="/tmp/etc/passwall2/" ;;
+		passwall_server) process_pattern="/tmp/etc/passwall_server/" ;;
+		passwall2_server) process_pattern="/tmp/etc/passwall2_server/" ;;
+		homeproxy) process_pattern="/var/run/homeproxy/" ;;
+		shadowsocksr) process_pattern="/var/etc/shadowsocksr/" ;;
+		shadowsocks-libev) process_pattern="ss-redir" ;;
+		momo) process_pattern="/etc/momo/" ;;
+		sing-box) process_pattern="sing-box run" ;;
+		mihomo) process_pattern="/usr/bin/mihomo" ;;
+		clash) process_pattern="/usr/bin/clash" ;;
+		v2raya) process_pattern="v2rayA" ;;
+		xray|luci-xray) process_pattern="/usr/bin/xray" ;;
+		nekobox) process_pattern="nekobox" ;;
+		fullcombo|fullcombo-shark) process_pattern="fullcombo" ;;
+		*) return 1 ;;
+	esac
+
+	ps ww 2>/dev/null | grep -F "$process_pattern" | grep -v grep >/dev/null 2>&1
 }
 
 restore_proxy_services() {
@@ -125,7 +158,21 @@ restore_proxy_services() {
 
 cleanup_run() {
 	restore_proxy_services
+	rm -f "$LOCK_DIR/pid"
 	rmdir "$LOCK_DIR" 2>/dev/null || true
+}
+
+recover_stale_run() {
+	[ -d "$LOCK_DIR" ] || return 0
+	lock_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
+	if [ -n "$lock_pid" ] && kill -0 "$lock_pid" 2>/dev/null; then
+		return 1
+	fi
+	log "recovering stale test lock"
+	restore_proxy_services
+	rm -f "$LOCK_DIR/pid"
+	rmdir "$LOCK_DIR" 2>/dev/null || true
+	return 0
 }
 
 stopped_proxy_summary() {
@@ -578,10 +625,15 @@ run_once() {
 
 	mkdir -p "$WORKDIR"
 	cd "$WORKDIR"
+	if ! recover_stale_run; then
+		set_status "running" "已有测速任务正在运行，请稍后再试。"
+		exit 0
+	fi
 	if ! mkdir "$LOCK_DIR" 2>/dev/null; then
 		set_status "running" "已有测速任务正在运行，请稍后再试。"
 		exit 0
 	fi
+	echo "$$" > "$LOCK_DIR/pid"
 	trap 'cleanup_run' EXIT INT TERM HUP
 
 	: > "$CFST_LOG"

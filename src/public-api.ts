@@ -1,4 +1,4 @@
-import { readAggregates, readPublicCache, rebuildAggregates, recordPublicUpload, registerDevice, validateDevice, writePublicCache } from './database';
+import { calibrateIpv6Geo, readAggregates, readPublicCache, rebuildAggregates, recordPublicUpload, registerDevice, validateDevice, writePublicCache } from './database';
 import { updateDnsForAggregates } from './dns';
 import { detectCarrier, detectProvince, detectServerGeo } from './geo';
 import type { Carrier, DirectCheckResult, Env, IpVersion, NodeRecord, PublicUploadPayload, ServerGeo, UploadNodeInput } from './types';
@@ -89,7 +89,10 @@ async function handlePublicUpload(request: Request, env: Env, ctx: ExecutionCont
   }
 
   const directCheck = parseDirectCheck(payload.direct_check);
-  const serverGeo = applyDirectCheckGeo(detectServerGeo(request), directCheck);
+  const detectedServerGeo = applyDirectCheckGeo(detectServerGeo(request), directCheck);
+  const serverGeo = ipVersion === 'v6'
+    ? await calibrateIpv6Geo(env.DB, effectiveDeviceId ?? '', detectedServerGeo)
+    : detectedServerGeo;
   const uploadId = await recordPublicUpload(env.DB, {
     deviceId: effectiveDeviceId ?? '',
     nickname: effectiveNickname ?? '',
