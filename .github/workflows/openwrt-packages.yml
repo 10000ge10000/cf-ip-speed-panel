@@ -69,23 +69,9 @@ jobs:
           - label: mips_24kc-24.10.6
             arch: mips_24kc-24.10.6
             profile: stable
-          - label: snapshot-x86_64
+          # Both packages use PKGARCH:=all, so one snapshot build works on every CPU.
+          - label: snapshot-all
             arch: x86_64
-            profile: snapshot
-          - label: snapshot-aarch64_cortex-a53
-            arch: aarch64_cortex-a53
-            profile: snapshot
-          - label: snapshot-aarch64_cortex-a72
-            arch: aarch64_cortex-a72
-            profile: snapshot
-          - label: snapshot-aarch64_generic
-            arch: aarch64_generic
-            profile: snapshot
-          - label: snapshot-arm_cortex-a7_neon-vfpv4
-            arch: arm_cortex-a7_neon-vfpv4
-            profile: snapshot
-          - label: snapshot-mips_24kc
-            arch: mips_24kc
             profile: snapshot
     steps:
       - name: Checkout

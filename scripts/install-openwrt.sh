@@ -127,8 +127,8 @@ build_package_names() {
 
   if [ "$manager" = "apk" ]; then
     version="snapshot"
-    client_file="snapshot-${arch}-${CLIENT_PKG}-0.1.0-r1.apk"
-    luci_file="snapshot-${arch}-${LUCI_PKG}-0.1.0-r1.apk"
+    client_file="snapshot-all-${CLIENT_PKG}-0.1.0-r1.apk"
+    luci_file="snapshot-all-${LUCI_PKG}-0.1.0-r1.apk"
     package_ext="apk"
     return
   fi
