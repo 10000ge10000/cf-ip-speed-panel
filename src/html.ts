@@ -111,7 +111,7 @@ export function renderHtml(): string {
       border-color: #a8d8ff;
       box-shadow: 0 18px 42px rgba(22, 119, 210, .14);
     }
-    .card.dual, .card.v6 {
+    .card.v6 {
       border-color: rgba(15, 143, 127, .32);
       box-shadow: 0 12px 34px rgba(15, 143, 127, .08);
     }
@@ -468,63 +468,27 @@ export function renderHtml(): string {
         aggregatesEl.innerHTML = '<div class="empty">暂无可用于自动 DNS 的可信聚合数据。</div>';
         return;
       }
-      aggregatesEl.innerHTML = groupAggregates(items).map(renderAggregateCard).join('');
+      aggregatesEl.innerHTML = items
+        .sort(compareAggregateCards)
+        .map(renderAggregateCard)
+        .join('');
       aggregatesEl.querySelectorAll('[data-copy]').forEach((node) => node.addEventListener('click', () => copyText(node.dataset.copy, node.dataset.copyLabel)));
     }
 
-    function groupAggregates(items) {
-      const groups = new Map();
-      for (const item of items) {
-        const key = (item.province_code || 'unknown') + ':' + (item.carrier || 'other');
-        if (!groups.has(key)) {
-          groups.set(key, {
-            key,
-            provinceCode: item.province_code || '',
-            provinceName: item.province_name || '未知省份',
-            carrier: item.carrier || 'other',
-            carrierLabel: carrierLabels[item.carrier] || item.carrier_label || item.carrier || '其他',
-            items: []
-          });
-        }
-        groups.get(key).items.push(item);
-      }
-      return [...groups.values()]
-        .map((group) => ({ ...group, items: group.items.sort(compareEndpoints) }))
-        .sort((left, right) => {
-          const provinceSort = left.provinceName.localeCompare(right.provinceName, 'zh-CN');
-          if (provinceSort) return provinceSort;
-          return left.carrierLabel.localeCompare(right.carrierLabel, 'zh-CN');
-        });
-    }
-
-    function renderAggregateCard(group) {
-      const hasIpv4 = group.items.some((item) => item.ip_version !== 'v6');
-      const hasIpv6 = group.items.some((item) => item.ip_version === 'v6');
-      const cardClass = hasIpv4 && hasIpv6 ? 'dual' : hasIpv6 ? 'v6' : 'v4';
-      const versionLabel = hasIpv4 && hasIpv6 ? 'IPv4 + IPv6' : hasIpv6 ? 'IPv6' : 'IPv4';
-      const bestItem = group.items.reduce((best, item) => endpointScore(item) > endpointScore(best) ? item : best, group.items[0]);
-      return '<article class="card ' + cardClass + '">'
-        + '<div class="card-head">'
-        + '<div class="card-title">'
-        + '<h3>' + escapeHtml(group.provinceName) + ' · ' + escapeHtml(group.carrierLabel) + '</h3>'
-        + '<div class="badge-row">'
-        + '<span class="badge strong">' + versionLabel + '</span>'
-        + '<span class="badge good">可信直连</span>'
-        + '<span class="badge">' + group.items.length + ' 条记录</span>'
-        + '</div>'
-        + '</div>'
-        + '<span class="badge">' + escapeHtml(formatColo(bestItem.colo)) + '</span>'
-        + '</div>'
-        + '<div class="endpoint-list">' + group.items.map(renderEndpoint).join('') + '</div>'
-        + '</article>';
-    }
-
-    function renderEndpoint(item) {
+    function renderAggregateCard(item) {
       const isIpv6 = item.ip_version === 'v6';
       const typeLabel = ipVersionLabel(item);
-      return '<section class="endpoint ' + (isIpv6 ? 'v6' : 'v4') + '">'
-        + '<div class="endpoint-head">'
-        + '<div class="endpoint-title"><span class="endpoint-dot"></span><span>' + escapeHtml(typeLabel) + '</span></div>'
+      const provinceName = item.province_name || '未知省份';
+      const carrierLabel = carrierLabels[item.carrier] || item.carrier_label || item.carrier || '其他';
+      return '<article class="card ' + (isIpv6 ? 'v6' : 'v4') + '">'
+        + '<div class="card-head">'
+        + '<div class="card-title">'
+        + '<h3>' + escapeHtml(provinceName) + ' · ' + escapeHtml(carrierLabel) + '</h3>'
+        + '<div class="badge-row">'
+        + '<span class="badge strong ' + (isIpv6 ? 'ipv6' : '') + '">' + escapeHtml(typeLabel) + '</span>'
+        + '<span class="badge good">可信直连</span>'
+        + '</div>'
+        + '</div>'
         + '<span class="badge ' + (isIpv6 ? 'ipv6' : '') + '">' + escapeHtml(formatColo(item.colo)) + '</span>'
         + '</div>'
         + '<div class="endpoint-body">'
@@ -538,10 +502,16 @@ export function renderHtml(): string {
         + '<div class="metric"><span>贡献者</span><strong>' + escapeHtml(item.nickname || '匿名') + '</strong></div>'
         + '</div>'
         + '<p class="sync-line">最后同步：' + escapeHtml(formatRelativeTime(item.updated_at)) + ' · 北京时间 ' + escapeHtml(formatBeijingTime(item.updated_at)) + '</p>'
-        + '</section>';
+        + '</article>';
     }
 
-    function compareEndpoints(left, right) {
+    function compareAggregateCards(left, right) {
+      const provinceSort = String(left.province_name || '').localeCompare(String(right.province_name || ''), 'zh-CN');
+      if (provinceSort) return provinceSort;
+      const leftCarrier = carrierLabels[left.carrier] || left.carrier_label || left.carrier || '';
+      const rightCarrier = carrierLabels[right.carrier] || right.carrier_label || right.carrier || '';
+      const carrierSort = leftCarrier.localeCompare(rightCarrier, 'zh-CN');
+      if (carrierSort) return carrierSort;
       const order = { v4: 0, v6: 1 };
       const leftOrder = order[left.ip_version] ?? 0;
       const rightOrder = order[right.ip_version] ?? 0;
