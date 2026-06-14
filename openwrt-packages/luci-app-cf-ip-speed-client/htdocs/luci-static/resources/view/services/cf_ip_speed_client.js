@@ -143,6 +143,34 @@ function formatRelativeTime(value) {
   return Math.floor(seconds / 86400) + ' \u5929\u524d';
 }
 
+function formatBeijingTime(value) {
+  if (!value)
+    return '\u5c1a\u672a\u540c\u6b65';
+
+  var normalized = String(value)
+    .replace(' CST', '+08:00')
+    .replace(' ', 'T');
+  var timestamp = Date.parse(normalized);
+  if (!isFinite(timestamp))
+    return value;
+
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(new Date(timestamp)).replace(/\//g, '/');
+}
+
+function statusLabel(status) {
+  if (/ok|success|\u6210\u529f|\u5b8c\u6210/i.test(status))
+    return '\u4e0a\u4f20\u6210\u529f';
+  return status || '\u5f85\u8fd0\u884c';
+}
+
 function renderOverview(map, sectionId) {
   var status = uciGet(map, sectionId, 'last_status') || '\u5f85\u8fd0\u884c';
   var updatedAt = uciGet(map, sectionId, 'last_upload_at') || '\u5c1a\u672a\u540c\u6b65';
@@ -151,6 +179,7 @@ function renderOverview(map, sectionId) {
   var v4 = localResult(map, sectionId, 'v4');
   var v6 = localResult(map, sectionId, 'v6');
   var healthy = /ok|success|\u6210\u529f|\u5b8c\u6210/i.test(status);
+  var displayStatus = statusLabel(status);
   var statusClass = healthy ? 'is-success' : 'is-neutral';
   var shortDeviceId = deviceId.length > 13 ? deviceId.slice(0, 8) + '\u2026' : deviceId;
 
@@ -162,11 +191,11 @@ function renderOverview(map, sectionId) {
     + '</div>'
     + '<div class="cfip-metrics">'
     + '<div><span>\u8bbe\u5907 ID</span><strong title="' + escapeAttr(deviceId) + '">' + escapeHtml(shortDeviceId) + '</strong></div>'
-    + '<div><span>\u6700\u8fd1\u72b6\u6001</span><strong class="' + (healthy ? 'is-good' : '') + '">' + escapeHtml(status) + '</strong></div>'
+    + '<div><span>\u6700\u8fd1\u72b6\u6001</span><strong class="' + (healthy ? 'is-good' : '') + '">' + escapeHtml(displayStatus) + '</strong></div>'
     + '<div><span>IPv4 \u6700\u4f73</span><strong>' + (v4 ? formatNumber(v4.speed, 'MB/s') : '-') + '</strong></div>'
     + '<div><span>IPv6 \u6700\u4f73</span><strong>' + (v6 ? formatNumber(v6.speed, 'MB/s') : '-') + '</strong></div>'
     + '</div>'
-    + '<p class="cfip-sync">\u6700\u8fd1\u4efb\u52a1\uff1a' + escapeHtml(formatRelativeTime(updatedAt)) + '</p>'
+    + '<p class="cfip-sync">\u6700\u8fd1\u4efb\u52a1\uff1a' + escapeHtml(formatBeijingTime(updatedAt)) + ' \uff08\u5317\u4eac\u65f6\u95f4\uff09</p>'
     + '</section>'
     + '<section class="cfip-links cfip-card">'
     + '<div class="cfip-card-heading"><strong>\u9879\u76ee\u5165\u53e3</strong></div>'
@@ -205,12 +234,12 @@ function applyPageDesign(root) {
       '.cfip-luci-page .cbi-tabmenu li.cbi-tab a{width:130px;background:var(--cfip-blue)!important;border-color:var(--cfip-blue)!important;color:#fff!important;box-shadow:none}',
       '.cfip-panel,.cfip-card{min-width:0;padding:18px;border:1px solid var(--cfip-line);border-radius:8px;background:#fff;box-sizing:border-box}',
       '.cfip-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}',
-      '.cfip-panel-title{grid-column:1/-1;margin:0;color:var(--cfip-ink);font-size:18px;line-height:1.25}',
+      '.cfip-panel-title{grid-column:1/-1;margin:0;padding:0!important;color:var(--cfip-ink);font-size:18px;line-height:1.25}',
       '.cfip-panel .cbi-value{display:flex;min-width:0;flex-direction:column;padding:0;border:0}',
       '.cfip-panel .cbi-value.hidden{display:none}',
       '.cfip-panel .cbi-value-title{width:auto;margin:0 0 7px;color:var(--cfip-muted);font-size:13px;font-weight:700;line-height:1.25}',
       '.cfip-panel .cbi-value-field{width:auto;min-width:0}',
-      '.cfip-panel .cbi-value-description{margin-top:7px;color:var(--cfip-muted);font-size:12px;line-height:1.45}',
+      '.cfip-panel .cbi-value-description{margin-top:7px;padding:0!important;color:var(--cfip-muted);font-size:12px;line-height:1.45}',
       '.cfip-run [data-name=\"upload_enabled\"] .cbi-value-description,.cfip-run [data-name=\"ip_mode\"] .cbi-value-description{display:none}',
       '.cfip-panel input[type=text],.cfip-panel input[type=number],.cfip-panel select{width:100%;max-width:none;min-height:44px;border-color:#bfcfe0;border-radius:7px;background:#fff;box-sizing:border-box}',
       '.cfip-enabled{grid-column:1/-1}',
@@ -221,7 +250,7 @@ function applyPageDesign(root) {
       '.cfip-time{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}',
       '.cfip-time-field{min-width:0}',
       '.cfip-time-field>.cbi-value-title{display:block;width:auto;margin:0 0 7px;color:var(--cfip-muted);font-size:13px;font-weight:700}',
-      '.cfip-time-field>.cbi-value-description{margin-top:7px;color:var(--cfip-muted);font-size:12px;line-height:1.45}',
+      '.cfip-time-field>.cbi-value-description{margin-top:7px;padding:0!important;color:var(--cfip-muted);font-size:12px;line-height:1.45}',
       '.cfip-time>span{color:var(--cfip-muted);font-weight:700}',
       '.cfip-time .cbi-value{display:block}',
       '.cfip-time .cbi-value-title,.cfip-time .cbi-value-description{display:none}',
@@ -247,7 +276,7 @@ function applyPageDesign(root) {
       '.cfip-metrics span{display:block;margin-bottom:4px;color:var(--cfip-muted);font-size:12px}',
       '.cfip-metrics strong{display:block;overflow:hidden;color:var(--cfip-ink);text-overflow:ellipsis;white-space:nowrap}',
       '.cfip-metrics strong.is-good{color:#0a8c73}',
-      '.cfip-sync{margin:11px 0 0;color:var(--cfip-muted);font-size:12px}',
+      '.cfip-sync{margin:11px 0 0;padding:0!important;color:var(--cfip-muted);font-size:12px}',
       '.cfip-links{display:grid;gap:9px}',
       '.cfip-links .cfip-card-heading{margin-bottom:5px}',
       '.cfip-links a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:9px 12px;border:1px solid var(--cfip-line);border-radius:7px;background:#f7fafc;color:var(--cfip-ink);text-decoration:none;transition:transform .15s ease,border-color .15s ease,background .15s ease;box-sizing:border-box}',
@@ -257,9 +286,45 @@ function applyPageDesign(root) {
       '.cfip-links a b{color:var(--cfip-blue);font-size:18px}',
       '.cfip-note{border-color:#f5c775;background:#fffaed}',
       '.cfip-note strong{color:#bf590d;font-size:14px}',
-      '.cfip-note p{margin:12px 0 0;color:var(--cfip-ink);font-size:13px;line-height:1.5}',
+      '.cfip-note p{margin:12px 0 0;padding:0!important;color:var(--cfip-ink);font-size:12px;line-height:1.5;white-space:nowrap}',
       '.cfip-log-panel{padding:18px;border:1px solid var(--cfip-line);border-radius:8px;background:#fff}',
-      '@media(max-width:900px){.cfip-luci-page{padding:8px 0 24px}.cfip-header{display:block;height:auto;min-height:112px;padding:16px}.cfip-header h2{font-size:21px}.cfip-header-state{margin-top:12px}.cfip-layout{display:flex;flex-direction:column;gap:14px}.cfip-main,.cfip-aside{width:100%}.cfip-luci-page .cbi-tabmenu{height:42px;padding:3px}.cfip-luci-page .cbi-tabmenu li{flex:1}.cfip-luci-page .cbi-tabmenu li a,.cfip-luci-page .cbi-tabmenu li.cbi-tab a{width:100%;min-width:0}.cfip-panel{grid-template-columns:1fr;gap:12px;padding:16px 14px}.cfip-panel-title{font-size:17px}.cfip-enabled.cbi-value{display:grid!important}.cfip-time{grid-template-columns:1fr auto 1fr}.cfip-identity .cfip-actions{flex-direction:column}.cfip-actions [data-name=\"_run\"]{order:-1}.cfip-actions .cbi-value,.cfip-actions .cbi-button{width:100%;min-width:0!important}.cfip-card{padding:16px 14px}.cfip-card-heading>strong{font-size:17px}.cfip-summary .cfip-metrics{display:block}.cfip-summary .cfip-metrics div{padding:0;background:transparent}.cfip-summary .cfip-metrics div+div{margin-top:10px}.cfip-summary .cfip-metrics div:nth-child(n+3){display:none}.cfip-summary .cfip-metrics span,.cfip-summary .cfip-metrics strong{display:inline}.cfip-summary .cfip-metrics span{margin-right:8px}.cfip-sync{display:none}.cfip-links a{min-height:58px}.cfip-note{display:none}}'
+      '.cfip-luci-page{container-type:inline-size;width:100%;max-width:1280px;padding:32px 40px 40px;font-family:Inter,-apple-system,BlinkMacSystemFont,\"Segoe UI\",sans-serif;box-sizing:border-box}',
+      '.cfip-header{width:100%;height:80px;margin-bottom:20px;padding:18px 22px}',
+      '.cfip-header>div:first-child{width:min(820px,70%);overflow:hidden}',
+      '.cfip-header-state{width:230px;justify-content:flex-end}',
+      '.cfip-layout{grid-template-columns:minmax(0,780px) minmax(0,400px);gap:20px}',
+      '.cfip-main,.cfip-aside,.cfip-luci-page .cbi-tabmenu,.cfip-panel,.cfip-card{width:100%}',
+      '.cfip-main [id$=".basic"],.cfip-main [id$=".log"]{gap:16px!important;padding:0!important}',
+      '.cfip-panel{gap:14px 16px;padding:18px}',
+      '.cfip-panel .cbi-value-title,.cfip-time-field>.cbi-value-title{text-align:left!important}',
+      '.cfip-panel .cbi-value-field{display:block!important;margin:0!important;padding:0!important}',
+      '.cfip-panel select,.cfip-panel input[type=text],.cfip-panel input[type=number],.cfip-panel input[type=time]{height:44px;min-height:44px;padding:0 12px!important;color:var(--cfip-ink)!important;font-size:14px!important;line-height:42px!important}',
+      '.cfip-enabled.cbi-value{min-height:36px;grid-template-columns:minmax(0,620px) 42px;justify-content:space-between}',
+      '.cfip-enabled .cbi-value-title{grid-column:1;grid-row:1;margin:0 0 4px!important}',
+      '.cfip-enabled .cbi-value-description{grid-column:1;grid-row:2;margin:0!important}',
+      '.cfip-enabled .cbi-value-field{grid-column:2;grid-row:1/3;width:42px!important}',
+      '.cfip-enabled .cbi-checkbox{position:relative;width:42px;height:24px}',
+      '.cfip-enabled .cbi-checkbox input{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important}',
+      '.cfip-enabled .cbi-checkbox label{display:block!important;position:relative!important;width:42px!important;height:24px!important;margin:0!important;border:0!important;border-radius:999px!important;background:#aab8c8!important;cursor:pointer;box-shadow:none!important}',
+      '.cfip-enabled .cbi-checkbox label::before{content:\"\"!important;position:absolute!important;top:3px!important;left:3px!important;width:18px!important;height:18px!important;border:0!important;border-radius:50%!important;background:#fff!important;box-shadow:0 1px 3px rgba(13,31,51,.24)!important;transform:none!important;transition:left .15s ease!important}',
+      '.cfip-enabled .cbi-checkbox input:checked+label{background:var(--cfip-blue)!important}',
+      '.cfip-enabled .cbi-checkbox input:checked+label::before{left:21px!important}',
+      '.cfip-run [data-name=\"upload_enabled\"] .cbi-value-description,.cfip-run [data-name=\"ip_mode\"] .cbi-value-description{display:none!important}',
+      '.cfip-source-field{display:none!important}',
+      '.cfip-time{display:block}',
+      '.cfip-time-control{width:100%}',
+      '.cfip-mobile-schedule{display:none}',
+      '.cfip-identity .cbi-value-description{margin-top:7px}',
+      '.cfip-actions{width:100%}',
+      '.cfip-actions .cbi-button{height:42px;min-height:42px}',
+      '.cfip-run{height:292px}',
+      '.cfip-identity{height:217px}',
+      '.cfip-summary{height:240px}',
+      '.cfip-links{height:214px}',
+      '.cfip-note{height:83px}',
+      '@container (max-width:1100px) and (min-width:601px){.cfip-layout{grid-template-columns:minmax(0,1fr) 360px}.cfip-enabled.cbi-value{grid-template-columns:minmax(0,1fr) 42px}}',
+      '@container (max-width:600px){.cfip-luci-page{width:100vw;max-width:none;margin-left:calc((100% - 100vw)/2);padding:16px 14px 24px}.cfip-header{display:flex;flex-direction:column;align-items:flex-start;gap:12px;height:auto;min-height:106px;margin-bottom:14px;padding:16px}.cfip-header>div:first-child{width:100%}.cfip-header h2{font-size:21px}.cfip-header .cbi-map-descr{font-size:0}.cfip-header .cbi-map-descr::after{content:\"\\81ea\\52a8\\4f18\\9009 Cloudflare IP\";font-size:13px}.cfip-header-state{position:relative;width:100%;justify-content:flex-start;gap:5px;padding-left:16px}.cfip-header-state::before{content:\"\";position:absolute;left:0;width:8px;height:8px;border-radius:50%;background:#0a8c73}.cfip-header-state strong{display:none}.cfip-header-state span{color:#0a8c73}.cfip-layout{display:flex;flex-direction:column;gap:14px}.cfip-main,.cfip-aside{gap:14px}.cfip-luci-page .cbi-tabmenu{height:42px;padding:3px}.cfip-luci-page .cbi-tabmenu li{flex:1}.cfip-luci-page .cbi-tabmenu li a,.cfip-luci-page .cbi-tabmenu li.cbi-tab a{width:100%;min-width:0;height:36px}.cfip-run,.cfip-identity,.cfip-summary,.cfip-links{height:auto}.cfip-panel,.cfip-card{padding:16px 14px}.cfip-panel{display:flex;flex-direction:column;gap:12px}.cfip-panel-title,.cfip-card-heading>strong{font-size:17px}.cfip-enabled.cbi-value{display:none!important}.cfip-panel .cbi-value-title,.cfip-time-field>.cbi-value-title,.cfip-mobile-schedule>.cbi-value-title{margin:0 0 6px;color:var(--cfip-muted);font-size:12px;text-align:left!important}.cfip-panel select,.cfip-panel input[type=text],.cfip-panel input[type=number],.cfip-panel input[type=time]{height:42px;min-height:42px;padding:0 11px!important}.cfip-run [data-name=\"schedule_mode\"],.cfip-time-field{display:none!important}.cfip-mobile-schedule{display:block}.cfip-mobile-schedule-control{display:flex;align-items:center;width:100%;height:42px;border:1px solid #bfcfe0;border-radius:7px;background:#fff;box-sizing:border-box}.cfip-mobile-schedule-control select,.cfip-mobile-schedule-control input{height:40px!important;min-height:40px!important;border:0!important;background:transparent!important;box-shadow:none!important}.cfip-mobile-schedule-control select{min-width:0;flex:1;padding-right:0!important}.cfip-mobile-schedule-control span{color:var(--cfip-muted)}.cfip-mobile-schedule-control input{width:84px!important;flex:0 0 84px;padding-left:4px!important}.cfip-run [data-name=\"interval_hours\"]{display:none!important}.cfip-identity .cbi-value-description{display:none}.cfip-identity .cfip-actions{flex-direction:column;gap:8px}.cfip-actions [data-name=\"_run\"]{order:-1}.cfip-actions .cbi-value,.cfip-actions .cbi-button{width:100%!important;min-width:0!important}.cfip-summary{min-height:104px}.cfip-summary .cfip-card-heading{margin-bottom:12px}.cfip-summary .cfip-status{padding:0;background:transparent}.cfip-summary .cfip-metrics{display:block}.cfip-summary .cfip-metrics div{padding:0;background:transparent}.cfip-summary .cfip-metrics div+div{margin-top:10px}.cfip-summary .cfip-metrics div:nth-child(n+3){display:none}.cfip-summary .cfip-metrics span,.cfip-summary .cfip-metrics strong{display:inline;font-size:13px}.cfip-summary .cfip-metrics span{margin-right:8px}.cfip-summary .cfip-metrics div:nth-child(2) strong{font-size:14px}.cfip-sync{display:none}.cfip-links{min-height:183px}.cfip-links a{min-height:58px;padding:9px 11px;border:0}.cfip-links a small{font-size:11px}.cfip-note{display:none}}',
+      '@media(max-width:600px){.cfip-luci-page{width:100vw;max-width:none;margin-left:calc((100% - 100vw)/2);padding:16px 14px 24px}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -292,7 +357,9 @@ function applyPageDesign(root) {
   headerState.className = 'cfip-header-state';
   var enabled = asideContent && asideContent.getAttribute('data-enabled') === '1';
   var relative = asideContent ? asideContent.getAttribute('data-relative') : '';
-  headerState.innerHTML = '<strong>' + (enabled ? '\u670d\u52a1\u5df2\u542f\u7528' : '\u670d\u52a1\u672a\u542f\u7528') + '</strong><span>\u4e0a\u6b21\u540c\u6b65 ' + escapeHtml(relative || '\u5c1a\u672a\u8fd0\u884c') + '</span>';
+  headerState.innerHTML = '<strong>' + (enabled ? '\u670d\u52a1\u5df2\u542f\u7528' : '\u670d\u52a1\u672a\u542f\u7528') + '</strong><span>'
+    + (enabled ? '\u4e0a\u6b21\u6210\u529f ' : '\u4e0a\u6b21\u8fd0\u884c ')
+    + escapeHtml(relative || '\u5c1a\u672a\u8fd0\u884c') + '</span>';
   header.appendChild(headerState);
   root.insertBefore(header, section);
 
@@ -358,10 +425,20 @@ function applyPageDesign(root) {
   timeInputs.className = 'cfip-time';
   var hour = field('daily_hour');
   var minute = field('daily_minute');
+  var hourInput = hour.querySelector('input');
+  var minuteInput = minute.querySelector('input');
+  var timeControl = document.createElement('input');
+  timeControl.type = 'text';
+  timeControl.inputMode = 'numeric';
+  timeControl.maxLength = 5;
+  timeControl.placeholder = '03:15';
+  timeControl.className = 'cfip-time-control';
+  timeControl.value = String(hourInput.value || '0').padStart(2, '0')
+    + ':' + String(minuteInput.value || '0').padStart(2, '0');
+  timeInputs.appendChild(timeControl);
+  hour.classList.add('cfip-source-field');
+  minute.classList.add('cfip-source-field');
   timeInputs.appendChild(hour);
-  var colon = document.createElement('span');
-  colon.textContent = ':';
-  timeInputs.appendChild(colon);
   timeInputs.appendChild(minute);
   time.appendChild(timeTitle);
   time.appendChild(timeInputs);
@@ -369,10 +446,63 @@ function applyPageDesign(root) {
   var hintText = dailyHint.querySelector('.cbi-value-field');
   if (hintText) {
     hintText.className = 'cbi-value-description';
+    hintText.textContent = '\u5efa\u8bae\u9009\u62e9\u51cc\u6668 3 \u70b9\u81f3 5 \u70b9';
     time.appendChild(hintText);
   }
   dailyHint.remove();
   runPanel.appendChild(time);
+
+  var scheduleField = field('schedule_mode');
+  var scheduleSelect = scheduleField.querySelector('select');
+  var mobileSchedule = document.createElement('div');
+  mobileSchedule.className = 'cfip-mobile-schedule';
+  mobileSchedule.innerHTML = '<div class="cbi-value-title">\u6d4b\u901f\u65b9\u5f0f</div>';
+  var mobileScheduleControl = document.createElement('div');
+  mobileScheduleControl.className = 'cfip-mobile-schedule-control';
+  var mobileScheduleSelect = scheduleSelect.cloneNode(true);
+  mobileScheduleSelect.removeAttribute('id');
+  mobileScheduleSelect.removeAttribute('data-widget-id');
+  mobileScheduleSelect.value = scheduleSelect.value;
+  mobileScheduleControl.appendChild(mobileScheduleSelect);
+  var mobileSeparator = document.createElement('span');
+  mobileSeparator.textContent = '\u00b7';
+  mobileScheduleControl.appendChild(mobileSeparator);
+  var mobileTimeControl = timeControl.cloneNode(true);
+  mobileTimeControl.removeAttribute('id');
+  mobileScheduleControl.appendChild(mobileTimeControl);
+  mobileSchedule.appendChild(mobileScheduleControl);
+  runPanel.appendChild(mobileSchedule);
+
+  function syncTime(source) {
+    var match = /^(\d{1,2}):(\d{2})$/.exec(String(source.value || '').trim());
+    if (!match)
+      return;
+    var nextHour = Number(match[1]);
+    var nextMinute = Number(match[2]);
+    if (nextHour > 23 || nextMinute > 59)
+      return;
+    var normalizedTime = String(nextHour).padStart(2, '0') + ':' + String(nextMinute).padStart(2, '0');
+    hourInput.value = String(nextHour);
+    minuteInput.value = String(nextMinute);
+    timeControl.value = normalizedTime;
+    mobileTimeControl.value = normalizedTime;
+    hourInput.dispatchEvent(new Event('change', { bubbles: true }));
+    minuteInput.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  timeControl.addEventListener('change', function() {
+    syncTime(timeControl);
+  });
+  mobileTimeControl.addEventListener('change', function() {
+    syncTime(mobileTimeControl);
+  });
+  mobileScheduleSelect.addEventListener('change', function() {
+    scheduleSelect.value = mobileScheduleSelect.value;
+    scheduleSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  scheduleSelect.addEventListener('change', function() {
+    mobileScheduleSelect.value = scheduleSelect.value;
+  });
 
   var nickname = field('nickname');
   identityPanel.appendChild(nickname);
@@ -390,8 +520,10 @@ function applyPageDesign(root) {
   function updateTabLayout() {
     var basicVisible = window.getComputedStyle(basic).display !== 'none';
     aside.style.display = basicVisible ? '' : 'none';
-    var dailyVisible = window.getComputedStyle(hour).display !== 'none' || window.getComputedStyle(minute).display !== 'none';
+    var dailyVisible = scheduleSelect.value === 'daily';
     time.style.display = dailyVisible ? '' : 'none';
+    mobileSeparator.style.display = dailyVisible ? '' : 'none';
+    mobileTimeControl.style.display = dailyVisible ? '' : 'none';
   }
 
   var observer = new MutationObserver(updateTabLayout);
