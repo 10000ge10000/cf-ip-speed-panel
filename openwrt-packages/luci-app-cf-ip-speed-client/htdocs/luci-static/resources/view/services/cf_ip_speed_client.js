@@ -122,28 +122,54 @@ function bindCopyButtons(root) {
   }
 }
 
+function formatRelativeTime(value) {
+  if (!value)
+    return '\u5c1a\u672a\u540c\u6b65';
+
+  var normalized = String(value)
+    .replace(' CST', '+08:00')
+    .replace(' ', 'T');
+  var timestamp = Date.parse(normalized);
+  if (!isFinite(timestamp))
+    return value;
+
+  var seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
+  if (seconds < 60)
+    return '\u521a\u521a';
+  if (seconds < 3600)
+    return Math.floor(seconds / 60) + ' \u5206\u949f\u524d';
+  if (seconds < 86400)
+    return Math.floor(seconds / 3600) + ' \u5c0f\u65f6\u524d';
+  return Math.floor(seconds / 86400) + ' \u5929\u524d';
+}
+
 function renderOverview(map, sectionId) {
   var status = uciGet(map, sectionId, 'last_status') || '\u5f85\u8fd0\u884c';
-  var message = uciGet(map, sectionId, 'last_message') || '\u6682\u65e0\u4efb\u52a1\u8bb0\u5f55';
   var updatedAt = uciGet(map, sectionId, 'last_upload_at') || '\u5c1a\u672a\u540c\u6b65';
   var deviceId = uciGet(map, sectionId, 'device_id') || '\u672a\u6ce8\u518c';
-  var healthy = /ok|success|\u6210\u529f|\u5b8c\u6210/i.test(status + ' ' + message);
+  var enabled = uciGet(map, sectionId, 'enabled') === '1';
+  var v4 = localResult(map, sectionId, 'v4');
+  var v6 = localResult(map, sectionId, 'v6');
+  var healthy = /ok|success|\u6210\u529f|\u5b8c\u6210/i.test(status);
   var statusClass = healthy ? 'is-success' : 'is-neutral';
+  var shortDeviceId = deviceId.length > 13 ? deviceId.slice(0, 8) + '\u2026' : deviceId;
 
-  return '<div class="cfip-overview">'
-    + '<section class="cfip-summary">'
-    + '<div class="cfip-summary__heading">'
-    + '<div><strong>\u8fd0\u884c\u6458\u8981</strong><span>\u5feb\u901f\u786e\u8ba4\u8bbe\u5907\u548c\u6700\u8fd1\u4efb\u52a1\u72b6\u6001</span></div>'
-    + '<span class="cfip-status ' + statusClass + '">' + escapeHtml(status) + '</span>'
+  return '<div class="cfip-aside-content" data-enabled="' + (enabled ? '1' : '0') + '" data-relative="' + escapeAttr(formatRelativeTime(updatedAt)) + '">'
+    + '<section class="cfip-summary cfip-card">'
+    + '<div class="cfip-card-heading">'
+    + '<strong>\u8fd0\u884c\u6458\u8981</strong>'
+    + '<span class="cfip-status ' + statusClass + '">' + (healthy ? '\u6b63\u5e38' : escapeHtml(status)) + '</span>'
     + '</div>'
     + '<div class="cfip-metrics">'
-    + '<div><span>\u8bbe\u5907 ID</span><strong>' + escapeHtml(deviceId) + '</strong></div>'
-    + '<div><span>\u6700\u8fd1\u72b6\u6001</span><strong>' + escapeHtml(message) + '</strong></div>'
+    + '<div><span>\u8bbe\u5907 ID</span><strong title="' + escapeAttr(deviceId) + '">' + escapeHtml(shortDeviceId) + '</strong></div>'
+    + '<div><span>\u6700\u8fd1\u72b6\u6001</span><strong class="' + (healthy ? 'is-good' : '') + '">' + escapeHtml(status) + '</strong></div>'
+    + '<div><span>IPv4 \u6700\u4f73</span><strong>' + (v4 ? formatNumber(v4.speed, 'MB/s') : '-') + '</strong></div>'
+    + '<div><span>IPv6 \u6700\u4f73</span><strong>' + (v6 ? formatNumber(v6.speed, 'MB/s') : '-') + '</strong></div>'
     + '</div>'
-    + '<p class="cfip-sync">\u6700\u8fd1\u540c\u6b65\uff1a' + escapeHtml(updatedAt) + '</p>'
+    + '<p class="cfip-sync">\u6700\u8fd1\u4efb\u52a1\uff1a' + escapeHtml(formatRelativeTime(updatedAt)) + '</p>'
     + '</section>'
-    + '<section class="cfip-links">'
-    + '<div class="cfip-links__heading"><strong>\u9879\u76ee\u5165\u53e3</strong><span>\u67e5\u770b\u516c\u5f00\u7ed3\u679c\u4e0e\u9879\u76ee\u6e90\u7801</span></div>'
+    + '<section class="cfip-links cfip-card">'
+    + '<div class="cfip-card-heading"><strong>\u9879\u76ee\u5165\u53e3</strong></div>'
     + '<a href="https://cf.6610000.xyz/" target="_blank" rel="noopener noreferrer">'
     + '<span><strong>\u8bbf\u95ee\u516c\u5f00\u9762\u677f</strong><small>cf.6610000.xyz</small></span><b aria-hidden="true">\u2197</b>'
     + '</a>'
@@ -151,6 +177,8 @@ function renderOverview(map, sectionId) {
     + '<span><strong>\u67e5\u770b\u9879\u76ee\u6e90\u7801</strong><small>GitHub \u00b7 10000ge10000</small></span><b aria-hidden="true">\u2197</b>'
     + '</a>'
     + '</section>'
+    + '<section class="cfip-note cfip-card"><strong>\u6d4b\u901f\u8bf4\u660e</strong>'
+    + '<p>\u6d4b\u901f\u671f\u95f4\u4f1a\u4e34\u65f6\u6682\u505c\u5df2\u8bc6\u522b\u7684\u4ee3\u7406\u670d\u52a1\uff0c\u4efb\u52a1\u7ed3\u675f\u540e\u81ea\u52a8\u6062\u590d\u3002</p></section>'
     + '</div>';
 }
 
@@ -159,53 +187,223 @@ function applyPageDesign(root) {
     var style = document.createElement('style');
     style.id = 'cfip-luci-design';
     style.textContent = [
-      '.cfip-luci-page{--cfip-blue:#1677d2;--cfip-ink:#102033;--cfip-muted:#64748b;--cfip-line:#d8e1ec}',
-      '.cfip-luci-page .cbi-map-descr{max-width:900px;color:var(--cfip-muted);line-height:1.65;margin-bottom:18px}',
-      '.cfip-luci-page .cbi-section{border:0;background:transparent;box-shadow:none}',
-      '.cfip-luci-page .cbi-section-node{background:#fff;border:1px solid var(--cfip-line);border-radius:8px;padding:18px;box-shadow:0 10px 28px rgba(15,23,42,.045)}',
-      '.cfip-luci-page .cbi-tabmenu{display:flex;gap:6px;width:max-content;max-width:100%;padding:4px;margin:0 0 16px;border:0;border-radius:8px;background:#eaf0f5}',
+      '.cfip-luci-page{--cfip-blue:#146bc7;--cfip-ink:#0d1f33;--cfip-muted:#5c738f;--cfip-line:#d6e0eb;max-width:1280px;margin:0 auto;padding:12px 0 32px;color:var(--cfip-ink)}',
+      '.cfip-header{display:flex;align-items:center;justify-content:space-between;gap:24px;height:80px;margin-bottom:16px;padding:16px 22px;border:1px solid var(--cfip-line);border-radius:8px;background:#fff;box-sizing:border-box}',
+      '.cfip-header::after{content:none!important;display:none!important}',
+      '.cfip-header h2{margin:0 0 5px!important;padding:0!important;border:0!important;background:transparent!important;box-shadow:none!important;color:var(--cfip-ink);font-size:24px;line-height:1.2}',
+      '.cfip-header .cbi-map-descr{margin:0!important;color:var(--cfip-muted);font-size:13px;line-height:1.45}',
+      '.cfip-header-state{display:flex;align-items:center;gap:10px;flex:none;color:var(--cfip-muted);font-size:12px;font-weight:600}',
+      '.cfip-header-state strong{padding:6px 10px;border-radius:999px;background:#e8faf5;color:#0a8c73;font-size:12px}',
+      '.cfip-luci-page>.cbi-section{border:0;background:transparent;box-shadow:none}',
+      '.cfip-layout{display:grid;grid-template-columns:minmax(0,780px) minmax(300px,400px);gap:20px;align-items:start}',
+      '.cfip-main{display:flex;min-width:0;flex-direction:column;gap:16px}',
+      '.cfip-aside{display:flex;min-width:0;flex-direction:column;gap:16px}',
+      '.cfip-luci-page .cbi-section-node{padding:0;border:0;background:transparent;box-shadow:none}',
+      '.cfip-luci-page .cbi-tabmenu{display:flex;gap:6px;width:100%;height:44px;padding:4px;margin:0;border:0;border-radius:8px;background:#e8edf2;box-sizing:border-box}',
       '.cfip-luci-page .cbi-tabmenu li{border:0!important;background:transparent!important;margin:0!important}',
-      '.cfip-luci-page .cbi-tabmenu li a{display:block;min-width:104px;padding:9px 16px!important;border:0!important;border-radius:6px;color:var(--cfip-ink)!important;text-align:center;font-weight:700;text-decoration:none}',
-      '.cfip-luci-page .cbi-tabmenu li.cbi-tab a{background:var(--cfip-blue)!important;color:#fff!important;box-shadow:0 3px 8px rgba(22,119,210,.22)}',
-      '.cfip-luci-page .cbi-value{padding:12px 0;border-bottom:1px solid #eef2f6}',
-      '.cfip-luci-page .cbi-value:last-child{border-bottom:0}',
-      '.cfip-luci-page .cbi-value-title{color:var(--cfip-ink);font-weight:700}',
-      '.cfip-luci-page .cbi-value-title:empty{display:none}',
-      '.cfip-luci-page .cbi-value-title:empty+.cbi-value-field{width:100%}',
-      '.cfip-luci-page .cbi-value-description{color:var(--cfip-muted);line-height:1.55}',
-      '.cfip-luci-page input[type=text],.cfip-luci-page input[type=number],.cfip-luci-page select{min-height:40px;border-color:#c5d1de;border-radius:7px;background:#fff}',
-      '.cfip-luci-page .cbi-button{min-height:40px;padding:0 16px;border-radius:7px;font-weight:700;transition:transform .15s ease,box-shadow .15s ease}',
+      '.cfip-luci-page .cbi-tabmenu li a{display:flex;align-items:center;justify-content:center;min-width:100px;height:36px;padding:0 18px!important;border:1px solid var(--cfip-line)!important;border-radius:7px;background:#fff!important;color:var(--cfip-ink)!important;text-align:center;font-size:14px;font-weight:700;text-decoration:none;box-sizing:border-box}',
+      '.cfip-luci-page .cbi-tabmenu li.cbi-tab a{width:130px;background:var(--cfip-blue)!important;border-color:var(--cfip-blue)!important;color:#fff!important;box-shadow:none}',
+      '.cfip-panel,.cfip-card{min-width:0;padding:18px;border:1px solid var(--cfip-line);border-radius:8px;background:#fff;box-sizing:border-box}',
+      '.cfip-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 16px}',
+      '.cfip-panel-title{grid-column:1/-1;margin:0;color:var(--cfip-ink);font-size:18px;line-height:1.25}',
+      '.cfip-panel .cbi-value{display:flex;min-width:0;flex-direction:column;padding:0;border:0}',
+      '.cfip-panel .cbi-value.hidden{display:none}',
+      '.cfip-panel .cbi-value-title{width:auto;margin:0 0 7px;color:var(--cfip-muted);font-size:13px;font-weight:700;line-height:1.25}',
+      '.cfip-panel .cbi-value-field{width:auto;min-width:0}',
+      '.cfip-panel .cbi-value-description{margin-top:7px;color:var(--cfip-muted);font-size:12px;line-height:1.45}',
+      '.cfip-run [data-name=\"upload_enabled\"] .cbi-value-description,.cfip-run [data-name=\"ip_mode\"] .cbi-value-description{display:none}',
+      '.cfip-panel input[type=text],.cfip-panel input[type=number],.cfip-panel select{width:100%;max-width:none;min-height:44px;border-color:#bfcfe0;border-radius:7px;background:#fff;box-sizing:border-box}',
+      '.cfip-enabled{grid-column:1/-1}',
+      '.cfip-enabled.cbi-value{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:center}',
+      '.cfip-enabled .cbi-value-title{margin-bottom:3px;color:var(--cfip-ink);font-size:14px}',
+      '.cfip-enabled .cbi-value-description{grid-column:1;margin:0}',
+      '.cfip-enabled .cbi-value-field{grid-column:2;grid-row:1/3}',
+      '.cfip-time{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}',
+      '.cfip-time-field{min-width:0}',
+      '.cfip-time-field>.cbi-value-title{display:block;width:auto;margin:0 0 7px;color:var(--cfip-muted);font-size:13px;font-weight:700}',
+      '.cfip-time-field>.cbi-value-description{margin-top:7px;color:var(--cfip-muted);font-size:12px;line-height:1.45}',
+      '.cfip-time>span{color:var(--cfip-muted);font-weight:700}',
+      '.cfip-time .cbi-value{display:block}',
+      '.cfip-time .cbi-value-title,.cfip-time .cbi-value-description{display:none}',
+      '.cfip-identity{grid-template-columns:1fr}',
+      '.cfip-identity .cfip-actions{display:flex;gap:10px;align-items:center}',
+      '.cfip-actions .cbi-value{width:auto}',
+      '.cfip-actions .cbi-value-title{display:none}',
+      '.cfip-actions .cbi-value-field{display:block}',
+      '.cfip-actions .cbi-button{margin:0;min-width:150px}',
+      '.cfip-actions [data-name=\"_run\"] .cbi-button{min-width:210px}',
+      '.cfip-luci-page .cbi-button{min-height:42px;padding:0 16px;border-radius:7px;font-weight:700;transition:transform .15s ease,box-shadow .15s ease}',
       '.cfip-luci-page .cbi-button:hover{transform:translateY(-1px)}',
-      '.cfip-luci-page .cbi-button-action{background:var(--cfip-blue)!important;border-color:var(--cfip-blue)!important;color:#fff!important;box-shadow:0 5px 14px rgba(22,119,210,.2)}',
+      '.cfip-luci-page .cbi-button-action{background:var(--cfip-blue)!important;border-color:var(--cfip-blue)!important;color:#fff!important;box-shadow:none}',
       '.cfip-luci-page .cbi-button-apply{background:#fff!important;border-color:#b8c7d8!important;color:var(--cfip-ink)!important}',
-      '.cfip-overview{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:14px;margin:0 0 18px}',
-      '.cfip-summary,.cfip-links{min-width:0;padding:16px;border:1px solid var(--cfip-line);border-radius:8px;background:#fff}',
-      '.cfip-summary__heading,.cfip-links__heading{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:12px}',
-      '.cfip-summary__heading div,.cfip-links__heading{min-width:0}',
-      '.cfip-summary__heading strong,.cfip-links__heading strong{display:block;color:var(--cfip-ink);font-size:16px}',
-      '.cfip-summary__heading span:not(.cfip-status),.cfip-links__heading span{display:block;margin-top:3px;color:var(--cfip-muted);font-size:12px}',
+      '.cfip-aside-content{display:flex;flex-direction:column;gap:16px}',
+      '.cfip-card-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}',
+      '.cfip-card-heading>strong{font-size:18px}',
       '.cfip-status{flex:none;padding:5px 9px;border-radius:999px;font-size:12px;font-weight:700}',
       '.cfip-status.is-success{background:#e9fbf7;color:#087c6c}',
       '.cfip-status.is-neutral{background:#eef3f8;color:#516174}',
       '.cfip-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}',
-      '.cfip-metrics div{min-width:0;padding:11px;border-radius:7px;background:#f6f8fa}',
+      '.cfip-metrics div{min-width:0;padding:12px;border-radius:7px;background:#f7fafc}',
       '.cfip-metrics span{display:block;margin-bottom:4px;color:var(--cfip-muted);font-size:12px}',
       '.cfip-metrics strong{display:block;overflow:hidden;color:var(--cfip-ink);text-overflow:ellipsis;white-space:nowrap}',
+      '.cfip-metrics strong.is-good{color:#0a8c73}',
       '.cfip-sync{margin:11px 0 0;color:var(--cfip-muted);font-size:12px}',
       '.cfip-links{display:grid;gap:9px}',
-      '.cfip-links__heading{display:block;margin-bottom:2px}',
-      '.cfip-links a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;padding:9px 11px;border:1px solid var(--cfip-line);border-radius:7px;background:#f7f9fb;color:var(--cfip-ink);text-decoration:none;transition:transform .15s ease,border-color .15s ease,background .15s ease}',
+      '.cfip-links .cfip-card-heading{margin-bottom:5px}',
+      '.cfip-links a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:64px;padding:9px 12px;border:1px solid var(--cfip-line);border-radius:7px;background:#f7fafc;color:var(--cfip-ink);text-decoration:none;transition:transform .15s ease,border-color .15s ease,background .15s ease;box-sizing:border-box}',
       '.cfip-links a:hover{transform:translateY(-1px);border-color:#9bc7ee;background:#f0f7ff}',
       '.cfip-links a strong,.cfip-links a small{display:block}',
-      '.cfip-links a small{margin-top:3px;color:var(--cfip-muted);font-size:11px}',
+      '.cfip-links a small{margin-top:3px;color:var(--cfip-muted);font-size:12px}',
       '.cfip-links a b{color:var(--cfip-blue);font-size:18px}',
-      '@media(max-width:780px){.cfip-luci-page .cbi-section-node{padding:13px}.cfip-overview{grid-template-columns:1fr}.cfip-metrics{grid-template-columns:1fr}.cfip-luci-page .cbi-tabmenu{width:100%}.cfip-luci-page .cbi-tabmenu li{flex:1}.cfip-luci-page .cbi-tabmenu li a{min-width:0}.cfip-luci-page .cbi-value{display:block}.cfip-luci-page .cbi-value-title{width:auto;margin-bottom:7px}.cfip-luci-page .cbi-value-field{width:auto}.cfip-luci-page input[type=text],.cfip-luci-page input[type=number],.cfip-luci-page select{width:100%;max-width:none}}'
+      '.cfip-note{border-color:#f5c775;background:#fffaed}',
+      '.cfip-note strong{color:#bf590d;font-size:14px}',
+      '.cfip-note p{margin:12px 0 0;color:var(--cfip-ink);font-size:13px;line-height:1.5}',
+      '.cfip-log-panel{padding:18px;border:1px solid var(--cfip-line);border-radius:8px;background:#fff}',
+      '@media(max-width:900px){.cfip-luci-page{padding:8px 0 24px}.cfip-header{display:block;height:auto;min-height:112px;padding:16px}.cfip-header h2{font-size:21px}.cfip-header-state{margin-top:12px}.cfip-layout{display:flex;flex-direction:column;gap:14px}.cfip-main,.cfip-aside{width:100%}.cfip-luci-page .cbi-tabmenu{height:42px;padding:3px}.cfip-luci-page .cbi-tabmenu li{flex:1}.cfip-luci-page .cbi-tabmenu li a,.cfip-luci-page .cbi-tabmenu li.cbi-tab a{width:100%;min-width:0}.cfip-panel{grid-template-columns:1fr;gap:12px;padding:16px 14px}.cfip-panel-title{font-size:17px}.cfip-enabled.cbi-value{display:grid!important}.cfip-time{grid-template-columns:1fr auto 1fr}.cfip-identity .cfip-actions{flex-direction:column}.cfip-actions [data-name=\"_run\"]{order:-1}.cfip-actions .cbi-value,.cfip-actions .cbi-button{width:100%;min-width:0!important}.cfip-card{padding:16px 14px}.cfip-card-heading>strong{font-size:17px}.cfip-summary .cfip-metrics{display:block}.cfip-summary .cfip-metrics div{padding:0;background:transparent}.cfip-summary .cfip-metrics div+div{margin-top:10px}.cfip-summary .cfip-metrics div:nth-child(n+3){display:none}.cfip-summary .cfip-metrics span,.cfip-summary .cfip-metrics strong{display:inline}.cfip-summary .cfip-metrics span{margin-right:8px}.cfip-sync{display:none}.cfip-links a{min-height:58px}.cfip-note{display:none}}'
     ].join('');
     document.head.appendChild(style);
   }
 
-  if (root && root.classList)
-    root.classList.add('cfip-luci-page');
+  if (!root || !root.classList || root.getAttribute('data-cfip-layout') === '1')
+    return;
+
+  root.classList.add('cfip-luci-page');
+  root.setAttribute('data-cfip-layout', '1');
+
+  var title = root.querySelector('h2');
+  var description = root.querySelector('.cbi-map-descr');
+  var section = root.querySelector('.cbi-section');
+  var tabMenu = section && section.querySelector('.cbi-tabmenu');
+  var sectionNode = section && section.querySelector('.cbi-section-node');
+  var basic = root.querySelector('[id="container.cf_ip_speed_client.main.basic"]');
+  var log = root.querySelector('[id="container.cf_ip_speed_client.main.log"]');
+  var overview = root.querySelector('[id="cbi-cf_ip_speed_client-main-_overview"]');
+  if (!title || !description || !section || !tabMenu || !sectionNode || !basic || !log || !overview)
+    return;
+
+  var asideContent = overview.querySelector('.cfip-aside-content');
+  var header = document.createElement('header');
+  header.className = 'cfip-header';
+  var headerCopy = document.createElement('div');
+  headerCopy.appendChild(title);
+  headerCopy.appendChild(description);
+  header.appendChild(headerCopy);
+  var headerState = document.createElement('div');
+  headerState.className = 'cfip-header-state';
+  var enabled = asideContent && asideContent.getAttribute('data-enabled') === '1';
+  var relative = asideContent ? asideContent.getAttribute('data-relative') : '';
+  headerState.innerHTML = '<strong>' + (enabled ? '\u670d\u52a1\u5df2\u542f\u7528' : '\u670d\u52a1\u672a\u542f\u7528') + '</strong><span>\u4e0a\u6b21\u540c\u6b65 ' + escapeHtml(relative || '\u5c1a\u672a\u8fd0\u884c') + '</span>';
+  header.appendChild(headerState);
+  root.insertBefore(header, section);
+
+  var layout = document.createElement('div');
+  layout.className = 'cfip-layout';
+  var main = document.createElement('main');
+  main.className = 'cfip-main';
+  var aside = document.createElement('aside');
+  aside.className = 'cfip-aside';
+  layout.appendChild(main);
+  layout.appendChild(aside);
+  section.appendChild(layout);
+  main.appendChild(tabMenu);
+  main.appendChild(sectionNode);
+  aside.appendChild(overview);
+  overview.classList.remove('cbi-value');
+  overview.removeAttribute('id');
+  var overviewTitle = overview.querySelector('.cbi-value-title');
+  if (overviewTitle)
+    overviewTitle.remove();
+  var overviewField = overview.querySelector('.cbi-value-field');
+  if (overviewField && asideContent) {
+    overviewField.parentNode.insertBefore(asideContent, overviewField);
+    overviewField.remove();
+  }
+
+  function field(name) {
+    return root.querySelector('[id="cbi-cf_ip_speed_client-main-' + name + '"]');
+  }
+
+  function createPanel(className, heading) {
+    var panel = document.createElement('section');
+    panel.className = 'cfip-panel ' + className;
+    var panelTitle = document.createElement('h3');
+    panelTitle.className = 'cfip-panel-title';
+    panelTitle.textContent = heading;
+    panel.appendChild(panelTitle);
+    return panel;
+  }
+
+  var runPanel = createPanel('cfip-run', '\u8fd0\u884c\u8bbe\u7f6e');
+  var identityPanel = createPanel('cfip-identity', '\u8eab\u4efd\u4e0e\u4e0a\u4f20');
+  basic.insertBefore(runPanel, basic.firstChild);
+  basic.insertBefore(identityPanel, runPanel.nextSibling);
+
+  var enabledField = field('enabled');
+  enabledField.classList.add('cfip-enabled');
+  var enabledDescription = document.createElement('div');
+  enabledDescription.className = 'cbi-value-description';
+  enabledDescription.textContent = '\u4fdd\u5b58\u914d\u7f6e\u540e\u6309\u8ba1\u5212\u6267\u884c\u6d4b\u901f\u4efb\u52a1';
+  enabledField.appendChild(enabledDescription);
+  runPanel.appendChild(enabledField);
+  ['upload_enabled', 'ip_mode', 'schedule_mode', 'interval_hours'].forEach(function(name) {
+    runPanel.appendChild(field(name));
+  });
+
+  var time = document.createElement('div');
+  time.className = 'cfip-time-field';
+  var timeTitle = document.createElement('div');
+  timeTitle.className = 'cbi-value-title';
+  timeTitle.textContent = '\u6bcf\u5929\u5f00\u59cb\u65f6\u95f4';
+  var timeInputs = document.createElement('div');
+  timeInputs.className = 'cfip-time';
+  var hour = field('daily_hour');
+  var minute = field('daily_minute');
+  timeInputs.appendChild(hour);
+  var colon = document.createElement('span');
+  colon.textContent = ':';
+  timeInputs.appendChild(colon);
+  timeInputs.appendChild(minute);
+  time.appendChild(timeTitle);
+  time.appendChild(timeInputs);
+  var dailyHint = field('_daily_hint');
+  var hintText = dailyHint.querySelector('.cbi-value-field');
+  if (hintText) {
+    hintText.className = 'cbi-value-description';
+    time.appendChild(hintText);
+  }
+  dailyHint.remove();
+  runPanel.appendChild(time);
+
+  var nickname = field('nickname');
+  identityPanel.appendChild(nickname);
+  var actions = document.createElement('div');
+  actions.className = 'cfip-actions';
+  actions.appendChild(field('_register'));
+  actions.appendChild(field('_run'));
+  identityPanel.appendChild(actions);
+
+  var localResults = field('_local_results');
+  if (localResults)
+    basic.appendChild(localResults);
+
+  log.classList.add('cfip-log-panel');
+  function updateTabLayout() {
+    var basicVisible = window.getComputedStyle(basic).display !== 'none';
+    aside.style.display = basicVisible ? '' : 'none';
+    var dailyVisible = window.getComputedStyle(hour).display !== 'none' || window.getComputedStyle(minute).display !== 'none';
+    time.style.display = dailyVisible ? '' : 'none';
+  }
+
+  var observer = new MutationObserver(updateTabLayout);
+  observer.observe(sectionNode, {
+    attributes: true,
+    subtree: true,
+    attributeFilter: ['style', 'class']
+  });
+  tabMenu.addEventListener('click', function() {
+    window.setTimeout(updateTabLayout, 0);
+  });
+  updateTabLayout();
 }
 
 function localResult(map, sectionId, version) {
@@ -326,7 +524,7 @@ return view.extend({
     var m = new form.Map(
       'cf_ip_speed_client',
       _('Cloudflare IP \u4f18\u9009\u52a9\u624b'),
-      _('\u6d4b\u901f\u671f\u95f4\u4f1a\u4e34\u65f6\u6682\u505c\u5e38\u89c1\u4ee3\u7406\u670d\u52a1\uff0c\u5b8c\u6210\u540e\u81ea\u52a8\u6062\u590d\uff1b\u4f60\u53ef\u4ee5\u9009\u62e9\u53ea\u6d4b\u8bd5 IPv4 \u6216\u540c\u65f6\u6d4b\u8bd5 IPv4+IPv6\uff0c\u4e5f\u53ef\u4ee5\u9009\u62e9\u4ec5\u672c\u5730\u81ea\u7528\u4e0d\u4e0a\u4f20\u3002')
+      _('\u81ea\u52a8\u4f18\u9009 Cloudflare IP\uff0c\u5e76\u6309\u8ba1\u5212\u5b8c\u6210\u6d4b\u901f\u4e0e\u4e0a\u4f20')
     );
 
     var s = m.section(form.NamedSection, 'main', 'client');
@@ -340,7 +538,7 @@ return view.extend({
       return renderOverview(this.map, section_id);
     };
 
-    var o = s.taboption('basic', form.Flag, 'enabled', _('\u542f\u7528'));
+    var o = s.taboption('basic', form.Flag, 'enabled', _('\u542f\u7528\u81ea\u52a8\u6d4b\u901f'));
     o.default = '0';
     o.rmempty = false;
 
@@ -358,8 +556,8 @@ return view.extend({
     o.rmempty = false;
     o.description = _('IPv4+IPv6 \u4f1a\u987a\u5e8f\u6267\u884c\u4e24\u6b21\u6d4b\u901f\uff1b\u5982\u679c\u8def\u7531\u5668\u6ca1\u6709 IPv6 \u9ed8\u8ba4\u8def\u7531\uff0c\u4f1a\u81ea\u52a8\u8df3\u8fc7 IPv6\u3002');
 
-    o = s.taboption('basic', form.Value, 'nickname', _('\u6635\u79f0'));
-    o.description = _('\u6635\u79f0\u5148\u5230\u5148\u5f97\uff0c\u6ce8\u518c\u540e\u4f1a\u5c55\u793a\u5728\u8d21\u732e\u5217\u8868\u4e2d\u3002');
+    o = s.taboption('basic', form.Value, 'nickname', _('\u8d21\u732e\u6635\u79f0'));
+    o.description = _('\u6635\u79f0\u7528\u4e8e\u516c\u5f00\u8d21\u732e\u5217\u8868\uff0c\u6ce8\u518c\u6210\u529f\u540e\u5c06\u4fdd\u7559\u5728\u8bbe\u5907\u4e2d\u3002');
     o.placeholder = '\u4e00\u4e07AI\u5206\u4eab';
     o.rmempty = false;
     o.depends('upload_enabled', '1');
