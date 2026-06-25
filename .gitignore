@@ -6,3 +6,6 @@ node_modules/
 upload-payload.json
 result.csv
 npm-debug.log*
+.playwright-cli/
+output/
+video-script.md

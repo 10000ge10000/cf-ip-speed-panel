@@ -533,9 +533,7 @@ run_cfst_for_version() {
 		return 1
 	fi
 
-	if [ "$upload_enabled" != "1" ]; then
-		save_result_state "$ip_version" "$result_file" "$direct_check"
-	fi
+	save_result_state "$ip_version" "$result_file" "$direct_check"
 	append_summary "${label} 完成，结果：$result_file"
 	proxy_suspected="$(printf '%s' "$direct_check" | jsonfilter -e '@.proxy_suspected' 2>/dev/null || true)"
 	warnings="$(printf '%s' "$direct_check" | jsonfilter -e '@.warnings[0]' 2>/dev/null || true)"

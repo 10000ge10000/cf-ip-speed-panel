@@ -192,8 +192,8 @@ function renderOverview(map, sectionId) {
     + '<div class="cfip-metrics">'
     + '<div><span>\u8bbe\u5907 ID</span><strong title="' + escapeAttr(deviceId) + '">' + escapeHtml(shortDeviceId) + '</strong></div>'
     + '<div><span>\u6700\u8fd1\u72b6\u6001</span><strong class="' + (healthy ? 'is-good' : '') + '">' + escapeHtml(displayStatus) + '</strong></div>'
-    + '<div><span>IPv4 \u6700\u4f73</span><strong>' + (v4 ? formatNumber(v4.speed, 'MB/s') : '-') + '</strong></div>'
-    + '<div><span>IPv6 \u6700\u4f73</span><strong>' + (v6 ? formatNumber(v6.speed, 'MB/s') : '-') + '</strong></div>'
+    + '<div><span>IPv4 \u6700\u4f73</span><strong title="' + escapeAttr(v4 ? v4.ip : '-') + '">' + escapeHtml(v4 ? v4.ip : '-') + '</strong></div>'
+    + '<div><span>IPv6 \u6700\u4f73</span><strong title="' + escapeAttr(v6 ? v6.ip : '-') + '">' + escapeHtml(v6 ? v6.ip : '-') + '</strong></div>'
     + '</div>'
     + '<p class="cfip-sync">\u6700\u8fd1\u4efb\u52a1\uff1a' + escapeHtml(formatBeijingTime(updatedAt)) + ' \uff08\u5317\u4eac\u65f6\u95f4\uff09</p>'
     + '</section>'
@@ -324,7 +324,39 @@ function applyPageDesign(root) {
       '.cfip-note{height:83px}',
       '@container (max-width:1100px) and (min-width:601px){.cfip-layout{grid-template-columns:minmax(0,1fr) 360px}.cfip-enabled.cbi-value{grid-template-columns:minmax(0,1fr) 42px}}',
       '@container (max-width:600px){.cfip-luci-page{width:100vw;max-width:none;margin-left:calc((100% - 100vw)/2);padding:16px 14px 24px}.cfip-header{display:flex;flex-direction:column;align-items:flex-start;gap:12px;height:auto;min-height:106px;margin-bottom:14px;padding:16px}.cfip-header>div:first-child{width:100%}.cfip-header h2{font-size:21px}.cfip-header .cbi-map-descr{font-size:0}.cfip-header .cbi-map-descr::after{content:\"\\81ea\\52a8\\4f18\\9009 Cloudflare IP\";font-size:13px}.cfip-header-state{position:relative;width:100%;justify-content:flex-start;gap:5px;padding-left:16px}.cfip-header-state::before{content:\"\";position:absolute;left:0;width:8px;height:8px;border-radius:50%;background:#0a8c73}.cfip-header-state strong{display:none}.cfip-header-state span{color:#0a8c73}.cfip-layout{display:flex;flex-direction:column;gap:14px}.cfip-main,.cfip-aside{gap:14px}.cfip-luci-page .cbi-tabmenu{height:42px;padding:3px}.cfip-luci-page .cbi-tabmenu li{flex:1}.cfip-luci-page .cbi-tabmenu li a,.cfip-luci-page .cbi-tabmenu li.cbi-tab a{width:100%;min-width:0;height:36px}.cfip-run,.cfip-identity,.cfip-summary,.cfip-links{height:auto}.cfip-panel,.cfip-card{padding:16px 14px}.cfip-panel{display:flex;flex-direction:column;gap:12px}.cfip-panel-title,.cfip-card-heading>strong{font-size:17px}.cfip-enabled.cbi-value{display:none!important}.cfip-panel .cbi-value-title,.cfip-time-field>.cbi-value-title,.cfip-mobile-schedule>.cbi-value-title{margin:0 0 6px;color:var(--cfip-muted);font-size:12px;text-align:left!important}.cfip-panel select,.cfip-panel input[type=text],.cfip-panel input[type=number],.cfip-panel input[type=time]{height:42px;min-height:42px;padding:0 11px!important}.cfip-run [data-name=\"schedule_mode\"],.cfip-time-field{display:none!important}.cfip-mobile-schedule{display:block}.cfip-mobile-schedule-control{display:flex;align-items:center;width:100%;height:42px;border:1px solid #bfcfe0;border-radius:7px;background:#fff;box-sizing:border-box}.cfip-mobile-schedule-control select,.cfip-mobile-schedule-control input{height:40px!important;min-height:40px!important;border:0!important;background:transparent!important;box-shadow:none!important}.cfip-mobile-schedule-control select{min-width:0;flex:1;padding-right:0!important}.cfip-mobile-schedule-control span{color:var(--cfip-muted)}.cfip-mobile-schedule-control input{width:84px!important;flex:0 0 84px;padding-left:4px!important}.cfip-run [data-name=\"interval_hours\"]{display:none!important}.cfip-identity .cbi-value-description{display:none}.cfip-identity .cfip-actions{flex-direction:column;gap:8px}.cfip-actions [data-name=\"_run\"]{order:-1}.cfip-actions .cbi-value,.cfip-actions .cbi-button{width:100%!important;min-width:0!important}.cfip-summary{min-height:104px}.cfip-summary .cfip-card-heading{margin-bottom:12px}.cfip-summary .cfip-status{padding:0;background:transparent}.cfip-summary .cfip-metrics{display:block}.cfip-summary .cfip-metrics div{padding:0;background:transparent}.cfip-summary .cfip-metrics div+div{margin-top:10px}.cfip-summary .cfip-metrics div:nth-child(n+3){display:none}.cfip-summary .cfip-metrics span,.cfip-summary .cfip-metrics strong{display:inline;font-size:13px}.cfip-summary .cfip-metrics span{margin-right:8px}.cfip-summary .cfip-metrics div:nth-child(2) strong{font-size:14px}.cfip-sync{display:none}.cfip-links{min-height:183px}.cfip-links a{min-height:58px;padding:9px 11px;border:0}.cfip-links a small{font-size:11px}.cfip-note{display:none}}',
-      '@media(max-width:600px){.cfip-luci-page{width:100vw;max-width:none;margin-left:calc((100% - 100vw)/2);padding:16px 14px 24px}}'
+      '@media(max-width:600px){.cfip-luci-page{width:100vw;max-width:none;margin-left:calc((100% - 100vw)/2);padding:16px 14px 24px}}',
+      '.cfip-luci-page{--cfip-card:#fff;--cfip-soft:#f7fafc;--cfip-tab:#e8edf2;--cfip-ok:#0a8c73;color-scheme:light;max-width:1232px!important;padding:32px 16px 40px!important}',
+      '.cfip-luci-page,.cfip-luci-page *{box-sizing:border-box}',
+      '.cfip-header{height:80px!important;margin:0 0 20px!important;padding:18px 22px!important;background:var(--cfip-card)!important;color:var(--cfip-ink)!important}',
+      '.cfip-header>div:first-child{min-width:0!important;flex:1!important;width:auto!important}',
+      '.cfip-header h2{margin:0 0 6px!important;color:var(--cfip-ink)!important;font-size:24px!important;font-weight:700!important;line-height:26px!important;letter-spacing:0!important}',
+      '.cfip-header .cbi-map-descr{margin:0!important;padding:0!important;color:var(--cfip-muted)!important;background:transparent!important;font-size:13px!important;font-weight:400!important;line-height:19px!important}',
+      '.cfip-header-state{width:auto!important;min-width:230px!important;line-height:1!important}',
+      '.cfip-header-state strong{display:inline-flex!important;align-items:center!important;height:28px!important;padding:0 10px!important;font-weight:600!important}',
+      '.cfip-layout{grid-template-columns:minmax(0,780px) minmax(0,400px)!important;gap:20px!important}',
+      '.cfip-main [id$=".basic"],.cfip-main [id$=".log"]{display:flex!important;flex-direction:column!important;gap:16px!important;padding:0!important}',
+      '.cfip-luci-page .cbi-tabmenu{display:flex!important;align-items:center!important;height:44px!important;padding:4px!important;background:var(--cfip-tab)!important}',
+      '.cfip-luci-page .cbi-tabmenu li{display:flex!important;align-items:center!important;height:36px!important;line-height:1!important}',
+      '.cfip-luci-page .cbi-tabmenu li a{display:inline-flex!important;align-items:center!important;justify-content:center!important;min-width:130px!important;height:36px!important;min-height:36px!important;padding:0 18px!important;font-size:14px!important;font-weight:600!important;line-height:1!important;box-shadow:none!important;vertical-align:top!important}',
+      '.cfip-panel,.cfip-card{background:var(--cfip-card)!important;color:var(--cfip-ink)!important;border-color:var(--cfip-line)!important;box-shadow:none!important}',
+      '.cfip-panel-title{background:transparent!important;color:var(--cfip-ink)!important;font-size:18px!important;font-weight:600!important;line-height:22px!important}',
+      '.cfip-panel-title::before,.cfip-panel-title::after{content:none!important;display:none!important}',
+      '.cfip-panel .cbi-value-title,.cfip-time-field>.cbi-value-title,.cfip-mobile-schedule>.cbi-value-title{padding:0!important;color:var(--cfip-muted)!important;background:transparent!important;font-size:13px!important;font-weight:500!important;line-height:16px!important}',
+      '.cfip-panel input[type=text],.cfip-panel input[type=number],.cfip-panel select{height:44px!important;min-height:44px!important;padding:0 12px!important;border:1px solid #bfcfe0!important;border-radius:7px!important;background:#fff!important;color:var(--cfip-ink)!important;box-shadow:none!important;font-size:14px!important;font-weight:400!important;line-height:42px!important}',
+      '.cfip-panel select{appearance:auto!important;-webkit-appearance:menulist!important}',
+      '.cfip-time{display:grid!important;grid-template-columns:minmax(0,1fr) 14px minmax(0,1fr)!important;align-items:center!important;gap:8px!important;width:100%!important}',
+      '.cfip-time .cbi-value,.cfip-time .cbi-value-field,.cfip-time select{min-width:0!important;width:100%!important;max-width:100%!important}',
+      '.cfip-time-separator{display:flex;align-items:center;justify-content:center;color:var(--cfip-muted);font-weight:500}',
+      '.cfip-time .cbi-value{display:block!important}',
+      '.cfip-time .cbi-value-title,.cfip-time .cbi-value-description{display:none!important}',
+      '.cfip-luci-page .cbi-button{display:inline-flex!important;align-items:center!important;justify-content:center!important;height:42px!important;min-height:42px!important;border-radius:7px!important;font-size:14px!important;font-weight:600!important;line-height:1!important;box-shadow:none!important}',
+      '.cfip-luci-page .cbi-button-action{min-width:210px!important;background:var(--cfip-blue)!important;border-color:var(--cfip-blue)!important;color:#fff!important}',
+      '.cfip-luci-page .cbi-button-apply{min-width:150px!important;background:#fff!important;border-color:#b8c7d8!important;color:var(--cfip-ink)!important}',
+      '.cfip-metrics div,.cfip-links a{background:var(--cfip-soft)!important;color:var(--cfip-ink)!important}',
+      '.cfip-note p{background:transparent!important;color:var(--cfip-ink)!important}',
+      '@media(max-width:1260px){.cfip-luci-page{max-width:none!important}.cfip-layout{grid-template-columns:minmax(0,1fr) minmax(0,360px)!important}}',
+      '@media(max-width:1180px){.cfip-layout{grid-template-columns:minmax(0,1fr) minmax(0,360px)!important}}',
+      '@media(max-width:900px){.cfip-luci-page{width:100vw!important;max-width:none!important;margin-left:calc((100% - 100vw)/2)!important;padding:16px 14px 24px!important}.cfip-header{height:auto!important;min-height:106px!important;margin-bottom:14px!important;padding:16px!important}.cfip-header h2{font-size:21px!important;line-height:25px!important}.cfip-header .cbi-map-descr{font-size:0!important}.cfip-header .cbi-map-descr::after{content:"\\81ea\\52a8\\4f18\\9009 Cloudflare IP";font-size:13px}.cfip-layout{display:flex!important;flex-direction:column!important;gap:14px!important}.cfip-enabled.cbi-value{display:none!important}.cfip-run,.cfip-identity,.cfip-summary,.cfip-links{height:auto!important}.cfip-panel,.cfip-card{padding:16px 14px!important}.cfip-panel{display:flex!important;flex-direction:column!important;gap:12px!important}.cfip-panel-title,.cfip-card-heading>strong{font-size:17px!important}.cfip-run [data-name="schedule_mode"],.cfip-time-field{display:none!important}.cfip-mobile-schedule{display:block!important}.cfip-mobile-schedule-control{display:grid!important;grid-template-columns:minmax(0,1fr) 14px 70px 14px 70px!important;align-items:center!important;width:100%!important;height:42px!important;border:1px solid #bfcfe0!important;border-radius:7px!important;background:#fff!important}.cfip-mobile-schedule-control select{height:40px!important;min-height:40px!important;border:0!important;background:#fff!important;box-shadow:none!important}.cfip-mobile-schedule-control span{display:flex!important;align-items:center!important;justify-content:center!important;color:var(--cfip-muted)!important;font-weight:800!important}.cfip-identity .cfip-actions{flex-direction:column!important;gap:8px!important}.cfip-actions [data-name="_run"]{order:-1!important}.cfip-actions .cbi-value,.cfip-actions .cbi-button{width:100%!important;min-width:0!important}.cfip-summary .cfip-metrics{display:block!important}.cfip-summary .cfip-metrics div{padding:0!important;background:transparent!important}.cfip-summary .cfip-metrics div:nth-child(n+3){display:none!important}.cfip-sync{display:none!important}.cfip-note{display:none!important}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -425,20 +457,13 @@ function applyPageDesign(root) {
   timeInputs.className = 'cfip-time';
   var hour = field('daily_hour');
   var minute = field('daily_minute');
-  var hourInput = hour.querySelector('input');
-  var minuteInput = minute.querySelector('input');
-  var timeControl = document.createElement('input');
-  timeControl.type = 'text';
-  timeControl.inputMode = 'numeric';
-  timeControl.maxLength = 5;
-  timeControl.placeholder = '03:15';
-  timeControl.className = 'cfip-time-control';
-  timeControl.value = String(hourInput.value || '0').padStart(2, '0')
-    + ':' + String(minuteInput.value || '0').padStart(2, '0');
-  timeInputs.appendChild(timeControl);
-  hour.classList.add('cfip-source-field');
-  minute.classList.add('cfip-source-field');
+  var hourSelect = hour.querySelector('select');
+  var minuteSelect = minute.querySelector('select');
+  var timeSeparator = document.createElement('span');
+  timeSeparator.className = 'cfip-time-separator';
+  timeSeparator.textContent = ':';
   timeInputs.appendChild(hour);
+  timeInputs.appendChild(timeSeparator);
   timeInputs.appendChild(minute);
   time.appendChild(timeTitle);
   time.appendChild(timeInputs);
@@ -467,41 +492,42 @@ function applyPageDesign(root) {
   var mobileSeparator = document.createElement('span');
   mobileSeparator.textContent = '\u00b7';
   mobileScheduleControl.appendChild(mobileSeparator);
-  var mobileTimeControl = timeControl.cloneNode(true);
-  mobileTimeControl.removeAttribute('id');
-  mobileScheduleControl.appendChild(mobileTimeControl);
+  var mobileHourSelect = hourSelect.cloneNode(true);
+  mobileHourSelect.removeAttribute('id');
+  mobileHourSelect.removeAttribute('data-widget-id');
+  mobileHourSelect.value = hourSelect.value;
+  mobileScheduleControl.appendChild(mobileHourSelect);
+  var mobileTimeSeparator = document.createElement('span');
+  mobileTimeSeparator.textContent = ':';
+  mobileScheduleControl.appendChild(mobileTimeSeparator);
+  var mobileMinuteSelect = minuteSelect.cloneNode(true);
+  mobileMinuteSelect.removeAttribute('id');
+  mobileMinuteSelect.removeAttribute('data-widget-id');
+  mobileMinuteSelect.value = minuteSelect.value;
+  mobileScheduleControl.appendChild(mobileMinuteSelect);
   mobileSchedule.appendChild(mobileScheduleControl);
   runPanel.appendChild(mobileSchedule);
 
-  function syncTime(source) {
-    var match = /^(\d{1,2}):(\d{2})$/.exec(String(source.value || '').trim());
-    if (!match)
-      return;
-    var nextHour = Number(match[1]);
-    var nextMinute = Number(match[2]);
-    if (nextHour > 23 || nextMinute > 59)
-      return;
-    var normalizedTime = String(nextHour).padStart(2, '0') + ':' + String(nextMinute).padStart(2, '0');
-    hourInput.value = String(nextHour);
-    minuteInput.value = String(nextMinute);
-    timeControl.value = normalizedTime;
-    mobileTimeControl.value = normalizedTime;
-    hourInput.dispatchEvent(new Event('change', { bubbles: true }));
-    minuteInput.dispatchEvent(new Event('change', { bubbles: true }));
-  }
-
-  timeControl.addEventListener('change', function() {
-    syncTime(timeControl);
-  });
-  mobileTimeControl.addEventListener('change', function() {
-    syncTime(mobileTimeControl);
-  });
   mobileScheduleSelect.addEventListener('change', function() {
     scheduleSelect.value = mobileScheduleSelect.value;
     scheduleSelect.dispatchEvent(new Event('change', { bubbles: true }));
   });
   scheduleSelect.addEventListener('change', function() {
     mobileScheduleSelect.value = scheduleSelect.value;
+  });
+  mobileHourSelect.addEventListener('change', function() {
+    hourSelect.value = mobileHourSelect.value;
+    hourSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  hourSelect.addEventListener('change', function() {
+    mobileHourSelect.value = hourSelect.value;
+  });
+  mobileMinuteSelect.addEventListener('change', function() {
+    minuteSelect.value = mobileMinuteSelect.value;
+    minuteSelect.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  minuteSelect.addEventListener('change', function() {
+    mobileMinuteSelect.value = minuteSelect.value;
   });
 
   var nickname = field('nickname');
@@ -523,7 +549,9 @@ function applyPageDesign(root) {
     var dailyVisible = scheduleSelect.value === 'daily';
     time.style.display = dailyVisible ? '' : 'none';
     mobileSeparator.style.display = dailyVisible ? '' : 'none';
-    mobileTimeControl.style.display = dailyVisible ? '' : 'none';
+    mobileHourSelect.style.display = dailyVisible ? '' : 'none';
+    mobileTimeSeparator.style.display = dailyVisible ? '' : 'none';
+    mobileMinuteSelect.style.display = dailyVisible ? '' : 'none';
   }
 
   var observer = new MutationObserver(updateTabLayout);
@@ -706,15 +734,18 @@ return view.extend({
     o.rmempty = false;
     o.depends('schedule_mode', 'interval');
 
-    o = s.taboption('basic', form.Value, 'daily_hour', _('\u6bcf\u5929\u6d4b\u901f\u65f6\u95f4\uff08\u5c0f\u65f6\uff09'));
+    o = s.taboption('basic', form.ListValue, 'daily_hour', _('\u6bcf\u5929\u6d4b\u901f\u65f6\u95f4\uff08\u5c0f\u65f6\uff09'));
+    for (var hourOption = 0; hourOption < 24; hourOption++)
+      o.value(String(hourOption), String(hourOption).padStart(2, '0'));
     o.default = '3';
-    o.datatype = 'range(0,23)';
     o.rmempty = false;
     o.depends('schedule_mode', 'daily');
 
-    o = s.taboption('basic', form.Value, 'daily_minute', _('\u6bcf\u5929\u6d4b\u901f\u65f6\u95f4\uff08\u5206\u949f\uff09'));
+    o = s.taboption('basic', form.ListValue, 'daily_minute', _('\u6bcf\u5929\u6d4b\u901f\u65f6\u95f4\uff08\u5206\u949f\uff09'));
+    ['0', '15', '30', '45'].forEach(function(minuteOption) {
+      o.value(minuteOption, minuteOption.padStart(2, '0'));
+    });
     o.default = '0';
-    o.datatype = 'range(0,59)';
     o.rmempty = false;
     o.depends('schedule_mode', 'daily');
 
