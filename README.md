@@ -1,8 +1,19 @@
+<h1 align="center">
+  <img src="assets/logo.svg" alt="Cloudflare IP 优选助手 Logo" width="84" align="center">
+  Cloudflare IP 优选助手
+</h1>
+
 <p align="center">
-  <img src="assets/logo.svg" alt="Cloudflare IP 优选助手 Logo" width="140">
+  面向 OpenWrt 的 Cloudflare 优选 IP 公开众测、自动测速、可信聚合和省份运营商 DNS 优选平台。
 </p>
 
-# Cloudflare IP 优选助手
+<p align="center">
+  <a href="https://cf.6610000.xyz">项目页面</a> ·
+  <a href="https://github.com/10000ge10000/cf-ip-speed-panel/releases/tag/v0.1.4">插件下载</a> ·
+  <a href="https://github.com/10000ge10000/cf-ip-speed-panel">GitHub</a>
+</p>
+
+---
 
 这是一个公开众测版 Cloudflare 优选 IP 项目。
 
