@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/logo.svg" alt="Cloudflare IP 优选助手 Logo" width="140">
+</p>
+
 # Cloudflare IP 优选助手
 
 这是一个公开众测版 Cloudflare 优选 IP 项目。

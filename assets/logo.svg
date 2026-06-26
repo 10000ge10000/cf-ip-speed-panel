@@ -1,0 +1,49 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Cloudflare IP Speed Panel Logo</title>
+  <desc id="desc">A cloud speed optimization logo with route nodes and a lightning arrow.</desc>
+  <defs>
+    <linearGradient id="bg" x1="72" y1="48" x2="444" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1677FF"/>
+      <stop offset="0.5" stop-color="#16C8D8"/>
+      <stop offset="1" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="cloud" x1="137" y1="149" x2="383" y2="325" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAF8FF"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="215" y1="168" x2="320" y2="344" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#F97316"/>
+    </linearGradient>
+    <filter id="shadow" x="38" y="38" width="436" height="436" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="18" stdDeviation="20" flood-color="#084C61" flood-opacity="0.22"/>
+    </filter>
+    <filter id="soft" x="88" y="116" width="336" height="260" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#075985" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+
+  <rect x="40" y="40" width="432" height="432" rx="112" fill="url(#bg)" filter="url(#shadow)"/>
+  <path d="M108 350C108 303.056 146.056 265 193 265H319C365.944 265 404 303.056 404 350H108Z" fill="#061829" opacity="0.16"/>
+
+  <g filter="url(#soft)">
+    <path d="M171.2 312C132.3 312 101 280.9 101 242.5C101 207.8 126.8 178.5 161.5 173.7C177.9 138.6 213.6 116 253.5 116C302.8 116 344.3 150.9 353.8 197.6C387.3 203.2 412 231.7 412 265.6C412 303.8 380.6 312 341.8 312H171.2Z" fill="url(#cloud)"/>
+    <path d="M171.2 312C132.3 312 101 280.9 101 242.5C101 207.8 126.8 178.5 161.5 173.7C177.9 138.6 213.6 116 253.5 116C302.8 116 344.3 150.9 353.8 197.6C387.3 203.2 412 231.7 412 265.6C412 303.8 380.6 312 341.8 312H171.2Z" stroke="#CDEEFF" stroke-width="10" stroke-linejoin="round"/>
+  </g>
+
+  <path d="M271 157L205 265H262L238 355L327 234H270L271 157Z" fill="url(#bolt)" stroke="#FFF7D6" stroke-width="8" stroke-linejoin="round"/>
+
+  <path d="M141 372C189 340 241 330 302 337C335 341 360 354 389 374" stroke="#E8FBFF" stroke-width="16" stroke-linecap="round"/>
+  <path d="M141 372C189 340 241 330 302 337C335 341 360 354 389 374" stroke="#0EA5E9" stroke-width="8" stroke-linecap="round"/>
+
+  <circle cx="141" cy="372" r="22" fill="#E8FBFF"/>
+  <circle cx="141" cy="372" r="11" fill="#1677FF"/>
+  <circle cx="256" cy="337" r="24" fill="#E8FBFF"/>
+  <circle cx="256" cy="337" r="12" fill="#10B981"/>
+  <circle cx="389" cy="374" r="22" fill="#E8FBFF"/>
+  <circle cx="389" cy="374" r="11" fill="#F97316"/>
+
+  <path d="M136 414H376" stroke="#E8FBFF" stroke-width="14" stroke-linecap="round" opacity="0.92"/>
+  <path d="M136 414H292" stroke="#0F172A" stroke-width="14" stroke-linecap="round" opacity="0.72"/>
+  <path d="M315 414H376" stroke="#0F172A" stroke-width="14" stroke-linecap="round" opacity="0.28"/>
+</svg>
